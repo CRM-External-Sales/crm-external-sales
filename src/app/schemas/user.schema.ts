@@ -1,0 +1,131 @@
+import z from "zod";
+
+// Esquemas para autenticación
+// Schema para registro público (DESHABILITADO - solo admin puede crear usuarios)
+export const SignUpSchema = z.object({
+  username: z
+    .string()
+    .min(3, "El nombre de usuario debe tener al menos 3 caracteres")
+    .max(20, "El nombre de usuario no puede tener más de 20 caracteres")
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      "El nombre de usuario solo puede contener letras, números y guiones bajos",
+    ),
+  email: z.string().email({ message: "Email inválido" }),
+  password: z
+    .string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
+    .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
+    .regex(/[0-9]/, "Debe contener al menos un número")
+    .regex(
+      /[@$!%*?&]/,
+      "Debe contener al menos un carácter especial (@$!%*?&)",
+    ),
+  phone: z.string().optional(),
+  role: z.enum(["admin", "agent", "customer"]).default("customer"),
+});
+
+// Schema para creación de usuarios por admin
+export const CreateUserSchema = z.object({
+  username: z
+    .string()
+    .min(3, "El nombre de usuario debe tener al menos 3 caracteres")
+    .max(20, "El nombre de usuario no puede tener más de 20 caracteres")
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      "El nombre de usuario solo puede contener letras, números y guiones bajos",
+    ),
+  email: z.string().email({ message: "Email inválido" }),
+  password: z
+    .string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
+    .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
+    .regex(/[0-9]/, "Debe contener al menos un número")
+    .regex(
+      /[@$!%*?&]/,
+      "Debe contener al menos un carácter especial (@$!%*?&)",
+    ),
+  phone: z
+    .string()
+    .regex(/^[\+]?[1-9][\d]{0,15}$/, "Formato de teléfono inválido")
+    .optional(),
+  role: z.enum(["admin", "agent", "customer"]).default("customer"),
+});
+
+export const LoginSchema = z.object({
+  email: z.string().email({ message: "Email inválido" }),
+  password: z.string().min(1, "La contraseña es requerida"),
+});
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "La contraseña actual es requerida"),
+  newPassword: z
+    .string()
+    .min(8, "La nueva contraseña debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
+    .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
+    .regex(/[0-9]/, "Debe contener al menos un número")
+    .regex(
+      /[@$!%*?&]/,
+      "Debe contener al menos un carácter especial (@$!%*?&)",
+    ),
+});
+
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email({ message: "Email inválido" }),
+});
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(1, "El token es requerido"),
+  password: z
+    .string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
+    .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
+    .regex(/[0-9]/, "Debe contener al menos un número")
+    .regex(
+      /[@$!%*?&]/,
+      "Debe contener al menos un carácter especial (@$!%*?&)",
+    ),
+});
+
+// Esquemas para gestión de usuarios
+export const UpdateUserSchema = z.object({
+  username: z
+    .string()
+    .min(3, "El nombre de usuario debe tener al menos 3 caracteres")
+    .max(20, "El nombre de usuario no puede tener más de 20 caracteres")
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      "El nombre de usuario solo puede contener letras, números y guiones bajos",
+    )
+    .optional(),
+  email: z.string().email("Email inválido").optional(),
+  phone: z.string().optional(),
+  role: z.enum(["admin", "agent", "customer"]).optional(),
+});
+
+export const UserQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val) : 1)),
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val) : 10)),
+  role: z.enum(["admin", "agent", "customer"]).optional(),
+  search: z.string().optional(),
+});
+
+// Tipos TypeScript
+export type SignUpInput = z.infer<typeof SignUpSchema>;
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+export type LoginInput = z.infer<typeof LoginSchema>;
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
+export type UserQueryInput = z.infer<typeof UserQuerySchema>;

@@ -4,7 +4,7 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 export async function rateLimit(
   identifier: string,
   windowMs: number,
-  maxRequests: number,
+  maxRequests: number
 ): Promise<boolean> {
   const now = Date.now();
   const key = identifier;
@@ -40,9 +40,9 @@ setInterval(() => {
       rateLimitStore.delete(key);
     }
   }
-}, 60000); // Limpiar cada minuto
+}, 60000);
 
-// Función para limpiar rate limiting (solo para desarrollo)
+// Función para limpiar rate limiting
 export function clearRateLimit(identifier?: string): void {
   if (identifier) {
     rateLimitStore.delete(identifier);
@@ -51,7 +51,6 @@ export function clearRateLimit(identifier?: string): void {
   }
 }
 
-// Función para obtener estadísticas del rate limiting
 export function getRateLimitStats(): {
   total: number;
   entries: Array<{ key: string; count: number; resetTime: number }>;

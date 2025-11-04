@@ -58,13 +58,13 @@ export async function GET(
               .createSignedUrl(image.path, 3600); // URL válida por 1 hora
 
             return {
-              ...serializeForJSON(image),
+              ...(serializeForJSON(image) as Record<string, unknown>),
               publicUrl: data?.signedUrl || null,
             };
           } catch (error) {
             console.error(`Error obteniendo URL para imagen ${image.id}:`, error);
             return {
-              ...serializeForJSON(image),
+              ...(serializeForJSON(image) as Record<string, unknown>),
               publicUrl: null,
             };
           }
@@ -271,7 +271,7 @@ export async function POST(
           .createSignedUrl(filePath, 3600);
 
         processedImages.push({
-          ...serializeForJSON(tourImage),
+          ...(serializeForJSON(tourImage) as Record<string, unknown>),
           publicUrl: urlData?.signedUrl || null,
         });
       }

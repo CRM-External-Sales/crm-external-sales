@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedRequest } from "@/lib/auth-middleware";
-import { UpdateTourSchema } from "@/app/schemas/tour.schema";
+import { UpdateTourSchema, type UpdateTourInput } from "@/app/schemas/tour.schema";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { serializeForJSON, serializeTourForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
@@ -178,7 +178,7 @@ export async function PUT(
       }
 
       // Preparar datos para actualización (sin day y time)
-      const updateData: any = { ...validatedData };
+      const updateData: Partial<UpdateTourInput> = { ...validatedData };
       
       // Actualizar el tour
       const updatedTour = await prisma.tour.update({

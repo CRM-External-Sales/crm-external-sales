@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedRequest } from "@/lib/auth-middleware";
-import { UpdateTourScheduleSchema } from "@/app/schemas/tour.schema";
+import { UpdateTourScheduleSchema, type UpdateTourScheduleInput } from "@/app/schemas/tour.schema";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { serializeTourForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
@@ -83,8 +83,11 @@ export async function PUT(
       const body = await authRequest.json();
       const validatedData = UpdateTourScheduleSchema.parse(body);
 
-      // Preparar datos para actualización
-      const updateData: any = {};
+      // Preparar datos para actualización (para Prisma, start_time debe ser Date)
+      const updateData: {
+        weekday?: string;
+        start_time?: Date;
+      } = {};
 
       if (validatedData.weekday !== undefined) {
         updateData.weekday = validatedData.weekday;

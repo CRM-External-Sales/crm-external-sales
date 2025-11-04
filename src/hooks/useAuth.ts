@@ -62,8 +62,14 @@ export const useAuth = () => {
         setError(response.error || "Error en el login");
         return { success: false, error: response.error };
       }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || "Error en el login";
+    } catch (err: unknown) {
+      let errorMessage = "Error en el login";
+      
+      if (err && typeof err === "object" && "response" in err) {
+        const response = err.response as { data?: { error?: string } };
+        errorMessage = response?.data?.error || errorMessage;
+      }
+      
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -87,8 +93,9 @@ export const useAuth = () => {
         const response = await authService.register(userData);
 
         if (response.success && response.data) {
-          const { user: newUser, session } = response.data;
-          tokenUtils.setToken(session.access_token);
+          const newUser = response.data;
+          // Nota: register devuelve solo el usuario, no la sesión
+          // En un flujo real, deberías obtener la sesión después del registro
           userUtils.setUserData(newUser);
           setUser(newUser);
           return { success: true, user: newUser };
@@ -96,9 +103,14 @@ export const useAuth = () => {
           setError(response.error || "Error en el registro");
           return { success: false, error: response.error };
         }
-      } catch (err: any) {
-        const errorMessage =
-          err.response?.data?.error || "Error en el registro";
+      } catch (err: unknown) {
+        let errorMessage = "Error en el registro";
+        
+        if (err && typeof err === "object" && "response" in err) {
+          const response = err.response as { data?: { error?: string } };
+          errorMessage = response?.data?.error || errorMessage;
+        }
+        
         setError(errorMessage);
         return { success: false, error: errorMessage };
       } finally {
@@ -140,9 +152,14 @@ export const useAuth = () => {
           setError(response.error || "Error al cambiar contraseña");
           return { success: false, error: response.error };
         }
-      } catch (err: any) {
-        const errorMessage =
-          err.response?.data?.error || "Error al cambiar contraseña";
+      } catch (err: unknown) {
+        let errorMessage = "Error al cambiar contraseña";
+        
+        if (err && typeof err === "object" && "response" in err) {
+          const response = err.response as { data?: { error?: string } };
+          errorMessage = response?.data?.error || errorMessage;
+        }
+        
         setError(errorMessage);
         return { success: false, error: errorMessage };
       } finally {
@@ -166,9 +183,14 @@ export const useAuth = () => {
         setError(response.error || "Error al solicitar restablecimiento");
         return { success: false, error: response.error };
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.error || "Error al solicitar restablecimiento";
+    } catch (err: unknown) {
+      let errorMessage = "Error al solicitar restablecimiento";
+      
+      if (err && typeof err === "object" && "response" in err) {
+        const response = err.response as { data?: { error?: string } };
+        errorMessage = response?.data?.error || errorMessage;
+      }
+      
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -227,9 +249,14 @@ export const useUsers = () => {
           setError(response.error || "Error al obtener usuarios");
           return { success: false, error: response.error };
         }
-      } catch (err: any) {
-        const errorMessage =
-          err.response?.data?.error || "Error al obtener usuarios";
+      } catch (err: unknown) {
+        let errorMessage = "Error al obtener usuarios";
+        
+        if (err && typeof err === "object" && "response" in err) {
+          const response = err.response as { data?: { error?: string } };
+          errorMessage = response?.data?.error || errorMessage;
+        }
+        
         setError(errorMessage);
         return { success: false, error: errorMessage };
       } finally {
@@ -253,9 +280,14 @@ export const useUsers = () => {
         setError(response.error || "Error al obtener usuario");
         return { success: false, error: response.error };
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.error || "Error al obtener usuario";
+    } catch (err: unknown) {
+      let errorMessage = "Error al obtener usuario";
+      
+      if (err && typeof err === "object" && "response" in err) {
+        const response = err.response as { data?: { error?: string } };
+        errorMessage = response?.data?.error || errorMessage;
+      }
+      
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -290,9 +322,14 @@ export const useUsers = () => {
           setError(response.error || "Error al actualizar usuario");
           return { success: false, error: response.error };
         }
-      } catch (err: any) {
-        const errorMessage =
-          err.response?.data?.error || "Error al actualizar usuario";
+      } catch (err: unknown) {
+        let errorMessage = "Error al actualizar usuario";
+        
+        if (err && typeof err === "object" && "response" in err) {
+          const response = err.response as { data?: { error?: string } };
+          errorMessage = response?.data?.error || errorMessage;
+        }
+        
         setError(errorMessage);
         return { success: false, error: errorMessage };
       } finally {
@@ -318,9 +355,14 @@ export const useUsers = () => {
         setError(response.error || "Error al eliminar usuario");
         return { success: false, error: response.error };
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.error || "Error al eliminar usuario";
+    } catch (err: unknown) {
+      let errorMessage = "Error al eliminar usuario";
+      
+      if (err && typeof err === "object" && "response" in err) {
+        const response = err.response as { data?: { error?: string } };
+        errorMessage = response?.data?.error || errorMessage;
+      }
+      
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {

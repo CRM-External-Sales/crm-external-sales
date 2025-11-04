@@ -1,7 +1,7 @@
 import { http } from "./axios";
 
 // Tipos para las respuestas de la API
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -42,7 +42,7 @@ export const authService = {
     password: string;
     phone?: string;
     role?: "admin" | "agent" | "customer";
-  }): Promise<ApiResponse<{ user: User; session: AuthSession }>> => {
+  }): Promise<ApiResponse<User>> => {
     // Redirigir a userService.createUser
     return userService.createUser(userData);
   },
@@ -211,6 +211,184 @@ export const userUtils = {
   isAgentOrAdmin: (user?: User): boolean => {
     const currentUser = user || userUtils.getUserData();
     return currentUser?.role === "admin" || currentUser?.role === "agent";
+  },
+};
+
+// Interfaces para Tours
+export interface Tour {
+  id_tour: string;
+  name: string;
+  description: string;
+  photo?: string;
+  type: string;
+  availability: string;
+  base_price: number;
+  day: string;
+  time: string;
+  spots: number;
+  requirements: string;
+  duration: string;
+  difficulty: string;
+  supplier_corporate: number;
+  supplier?: {
+    corporate: number;
+    company: string;
+    email: string;
+  };
+  tour_image?: TourImage[];
+}
+
+export interface TourImage {
+  id: string;
+  tour_id: string;
+  path: string;
+  alt?: string;
+  is_cover: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Servicios de Tours
+export const tourService = {
+  // Obtener todos los tours
+  getTours: async (params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    name?: string;
+    availability?: string;
+  }): Promise<ApiResponse<Tour[]>> => {
+    const response = await http.get("/tours", { params });
+    return response.data as ApiResponse<Tour[]>;
+  },
+
+  // Obtener tour por ID
+  getTourById: async (id: string): Promise<ApiResponse<Tour>> => {
+    const response = await http.get(`/tours/${id}`);
+    return response.data as ApiResponse<Tour>;
+  },
+
+  // Crear nuevo tour (solo admin)
+  createTour: async (tourData: {
+    name: string;
+    description: string;
+    photo?: string;
+    type: string;
+    availability: string;
+    base_price: number;
+    day: string;
+    time: string;
+    spots: number;
+    requirements: string;
+    duration: string;
+    difficulty: string;
+    supplier_corporate: number;
+  }): Promise<ApiResponse<Tour>> => {
+    const response = await http.post("/tours", tourData);
+    return response.data as ApiResponse<Tour>;
+  },
+
+  // Actualizar tour (solo admin)
+  updateTour: async (
+    id: string,
+    tourData: Partial<{
+      name: string;
+      description: string;
+      photo?: string;
+      type: string;
+      availability: string;
+      base_price: number;
+      day: string;
+      time: string;
+      spots: number;
+      requirements: string;
+      duration: string;
+      difficulty: string;
+      supplier_corporate: number;
+    }>,
+  ): Promise<ApiResponse<Tour>> => {
+    const response = await http.put(`/tours/${id}`, tourData);
+    return response.data as ApiResponse<Tour>;
+  },
+
+  // Eliminar tour (solo admin)
+  deleteTour: async (id: string): Promise<ApiResponse> => {
+    const response = await http.delete(`/tours/${id}`);
+    return response.data as ApiResponse;
+  },
+
+  // Obtener imágenes de un tour
+  getTourImages: async (tourId: string): Promise<ApiResponse<TourImage[]>> => {
+    const response = await http.get(`/tours/${tourId}/images`);
+    return response.data as ApiResponse<TourImage[]>;
+  },
+
+  // Agregar imagen a un tour (solo admin)
+  addTourImage: async (
+    tourId: string,
+    imageData: {
+      path: string;
+      alt?: string;
+      is_cover?: boolean;
+      sort_order?: number;
+    },
+  ): Promise<ApiResponse<TourImage>> => {
+    const response = await http.post(`/tours/${tourId}/images`, imageData);
+    return response.data as ApiResponse<TourImage>;
+  },
+
+  // Actualizar imagen de tour (solo admin)
+  updateTourImage: async (
+    tourId: string,
+    imageId: string,
+    imageData: Partial<{
+      path: string;
+      alt?: string;
+      is_cover?: boolean;
+      sort_order?: number;
+    }>,
+  ): Promise<ApiResponse<TourImage>> => {
+    const response = await http.put(
+      `/tours/${tourId}/images/${imageId}`,
+      imageData,
+    );
+    return response.data as ApiResponse<TourImage>;
+  },
+
+  // Eliminar imagen de tour (solo admin)
+  deleteTourImage: async (
+    tourId: string,
+    imageId: string,
+  ): Promise<ApiResponse> => {
+    const response = await http.delete(`/tours/${tourId}/images/${imageId}`);
+    return response.data as ApiResponse;
+  },
+};
+
+// Servicio de Upload
+export const uploadService = {
+  // Subir imagen a Supabase Storage
+  uploadImage: async (file: File): Promise<ApiResponse<{
+    path: string;
+    fileName: string;
+    size: number;
+    type: string;
+  }>> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const response = await http.post("/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data as ApiResponse<{
+      path: string;
+      fileName: string;
+      size: number;
+      type: string;
+    }>;
   },
 };
 

@@ -5,6 +5,7 @@ import { LoginSchema } from "@/app/schemas/user.schema";
 import { withSecurity } from "@/lib/security-middleware";
 import { sanitizeEmail } from "@/lib/input-sanitizer";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
+import { ZodError } from "zod";
 
 // POST /api/auth/login - Inicio de sesión con protección contra fuerza bruta
 export const POST = withSecurity({
@@ -79,8 +80,8 @@ export const POST = withSecurity({
   } catch (error) {
     console.error("Error en login:", error);
 
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(createValidationErrorResponse(error as any), {
+    if (error instanceof ZodError) {
+      return NextResponse.json(createValidationErrorResponse(error), {
         status: 400,
       });
     }

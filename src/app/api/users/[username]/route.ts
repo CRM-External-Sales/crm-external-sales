@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import {
   withAuth,
   withAdminAuth,
-  AuthenticatedRequest,
+  type AuthenticatedRequest,
 } from "@/lib/auth-middleware";
 import { UpdateUserSchema } from "@/app/schemas/user.schema";
 import {
@@ -14,14 +14,15 @@ import {
 } from "@/lib/input-sanitizer";
 
 // GET /api/users/[username] - Obtener usuario específico por username
-export const GET = withAuth(
-  async (
-    request: AuthenticatedRequest,
-    user,
-    { params }: { params: { username: string } },
-  ) => {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ username: string }> | { username: string } },
+) {
+  const resolvedParams = params instanceof Promise ? await params : params;
+  const targetUsername = resolvedParams.username;
+  
+  const handler = withAuth(async (authRequest: AuthenticatedRequest, user) => {
     try {
-      const targetUsername = params.username;
 
       // Verificar permisos: solo admin puede ver otros usuarios, o el usuario puede verse a sí mismo
       if (user.role !== "admin" && user.username !== targetUsername) {
@@ -83,18 +84,21 @@ export const GET = withAuth(
         { status: 500 },
       );
     }
-  },
-);
+  });
+  
+  return handler(request);
+}
 
 // PUT /api/users/[username] - Actualizar usuario por username
-export const PUT = withAuth(
-  async (
-    request: AuthenticatedRequest,
-    user,
-    { params }: { params: { username: string } },
-  ) => {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ username: string }> | { username: string } },
+) {
+  const resolvedParams = params instanceof Promise ? await params : params;
+  const targetUsername = resolvedParams.username;
+  
+  const handler = withAuth(async (authRequest: AuthenticatedRequest, user) => {
     try {
-      const targetUsername = params.username;
       const body = await request.json();
       const validatedData = UpdateUserSchema.parse(body);
 
@@ -203,18 +207,21 @@ export const PUT = withAuth(
         { status: 500 },
       );
     }
-  },
-);
+  });
+  
+  return handler(request);
+}
 
 // DELETE /api/users/[username] - Eliminar usuario por username (solo admin)
-export const DELETE = withAdminAuth(
-  async (
-    request: AuthenticatedRequest,
-    user,
-    { params }: { params: { username: string } },
-  ) => {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ username: string }> | { username: string } },
+) {
+  const resolvedParams = params instanceof Promise ? await params : params;
+  const targetUsername = resolvedParams.username;
+  
+  const handler = withAdminAuth(async (authRequest: AuthenticatedRequest, user) => {
     try {
-      const targetUsername = params.username;
 
       // Log de auditoría
       console.log(`Usuario eliminado por admin ${user.username}:`, {
@@ -281,5 +288,7 @@ export const DELETE = withAdminAuth(
         { status: 500 },
       );
     }
-  },
-);
+  });
+  
+  return handler(request);
+}

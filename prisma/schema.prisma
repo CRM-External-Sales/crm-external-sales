@@ -403,7 +403,6 @@ model supplier {
   company    String     @db.VarChar
   phone      String     @unique(map: "Supplier_phone_key") @db.VarChar
   email      String     @unique(map: "Supplier_email_key") @db.VarChar
-  type       String     @db.VarChar
   service    String     @db.VarChar
   created_at DateTime   @default(now()) @db.Timestamptz(6)
   tour       tour[]
@@ -415,23 +414,53 @@ model supplier {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model tour {
-  id_tour            BigInt        @id(map: "Tour_pkey") @default(autoincrement())
-  name               String        @unique(map: "Tour_name_key") @db.VarChar
+  id_tour            BigInt         @id(map: "Tour_pkey") @default(autoincrement())
+  name               String         @unique(map: "Tour_name_key") @db.VarChar
   description        String
-  photo              String?       @db.VarChar
-  type               String        @db.VarChar
-  availability       String        @db.VarChar
-  base_price         Decimal       @db.Decimal
-  day                String        @db.VarChar
-  time               DateTime      @db.Time(6)
+  type               String         @db.VarChar
+  availability       String         @db.VarChar
+  base_price         Decimal        @db.Decimal
   spots              BigInt
-  requirements       String        @db.VarChar
-  duration           String        @db.VarChar
-  difficulty         String        @db.VarChar
+  requirements       String         @db.VarChar
+  duration           String         @db.VarChar
+  difficulty         String         @db.VarChar
   supplier_corporate BigInt
   reservation        reservation[]
-  supplier           supplier      @relation(fields: [supplier_corporate], references: [corporate], map: "Tour_supplier_corporate_fkey")
+  supplier           supplier       @relation(fields: [supplier_corporate], references: [corporate], map: "Tour_supplier_corporate_fkey")
 
+  tour_image   tour_image[]
+  tour_schedule tour_schedule[]
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tour_image {
+  id         BigInt   @id @default(autoincrement())
+  tour_id    BigInt
+  path       String   @db.VarChar
+  alt        String?  @db.VarChar
+  is_cover   Boolean  @default(false)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  tour       tour     @relation(fields: [tour_id], references: [id_tour], onDelete: Cascade)
+
+  @@index([tour_id, sort_order])
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tour_schedule {
+  id         BigInt   @id @default(autoincrement())
+  tour_id    BigInt
+  weekday    String   @db.VarChar
+  start_time DateTime @db.Time(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  tour       tour     @relation(fields: [tour_id], references: [id_tour], onDelete: Cascade)
+
+  @@index([tour_id])
   @@schema("public")
 }
 

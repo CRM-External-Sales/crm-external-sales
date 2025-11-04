@@ -1,28 +1,38 @@
 import DOMPurify from "isomorphic-dompurify";
 
+// Tipo recursivo para sanitización
+type Sanitizable =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Sanitizable[]
+  | { [key: string]: Sanitizable };
+
 // Sanitizar entrada para prevenir XSS
-export function sanitizeInput(input: any): any {
+export function sanitizeInput<T extends Sanitizable>(input: T): T {
   if (typeof input === "string") {
     // Escapar caracteres HTML y sanitizar
     return DOMPurify.sanitize(input, {
       ALLOWED_TAGS: [],
       ALLOWED_ATTR: [],
-    });
+    }) as T;
   }
 
   if (Array.isArray(input)) {
-    return input.map((item) => sanitizeInput(item));
+    return input.map((item) => sanitizeInput(item)) as T;
   }
 
   if (input && typeof input === "object") {
-    const sanitized: any = {};
+    const sanitized: Record<string, Sanitizable> = {};
     for (const [key, value] of Object.entries(input)) {
       // Sanitizar tanto la clave como el valor
       const sanitizedKey = sanitizeInput(key);
-      const sanitizedValue = sanitizeInput(value);
+      const sanitizedValue = sanitizeInput(value as Sanitizable);
       sanitized[sanitizedKey] = sanitizedValue;
     }
-    return sanitized;
+    return sanitized as T;
   }
 
   return input;

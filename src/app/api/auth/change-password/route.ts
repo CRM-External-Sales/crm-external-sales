@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { ChangePasswordSchema } from "@/app/schemas/user.schema";
 import { withAuth, AuthenticatedRequest } from "@/lib/auth-middleware";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
+import { ZodError } from "zod";
 
 // POST /api/auth/change-password - Cambiar contraseña
 export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
@@ -38,8 +39,8 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
   } catch (error) {
     console.error("Error cambiando contraseña:", error);
 
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(createValidationErrorResponse(error as any), {
+    if (error instanceof ZodError) {
+      return NextResponse.json(createValidationErrorResponse(error), {
         status: 400,
       });
     }

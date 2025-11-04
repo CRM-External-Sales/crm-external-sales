@@ -1,4 +1,8 @@
-import axios from "axios";
+import axios, {
+  type InternalAxiosRequestConfig,
+  type AxiosResponse,
+  type AxiosError,
+} from "axios";
 
 export const http = axios.create({
   baseURL: "/api",
@@ -10,7 +14,7 @@ export const http = axios.create({
 
 // Interceptor para agregar el token de autorización
 http.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("auth_token");
       if (token && config.headers) {
@@ -19,15 +23,15 @@ http.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   },
 );
 
 // Interceptor para manejar respuestas y errores
 http.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("auth_token");

@@ -13,6 +13,17 @@ import {
   sanitizePhone,
 } from "@/lib/input-sanitizer";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
+import { Prisma } from "../../generated/prisma";
+import { ZodError } from "zod";
+
+// Tipo para where clause de app_user
+interface AppUserWhereInput {
+  role?: "admin" | "agent" | "customer";
+  OR?: Array<{
+    username?: { contains: string; mode?: "insensitive" };
+    email?: { contains: string; mode?: "insensitive" };
+  }>;
+}
 
 // GET /api/users - Obtener todos los usuarios (solo admin)
 export const GET = withAdminAuth(
@@ -25,7 +36,7 @@ export const GET = withAdminAuth(
       const { page, limit, role, search } = validatedQuery;
 
       // Construir cláusula where
-      const where: any = {};
+      const where: AppUserWhereInput = {};
 
       if (role) {
         where.role = role;
@@ -201,8 +212,8 @@ export const POST = withAdminAuth(
     } catch (error) {
       console.error("Error creando usuario:", error);
 
-      if (error instanceof Error && error.name === "ZodError") {
-        return NextResponse.json(createValidationErrorResponse(error as any), {
+      if (error instanceof ZodError) {
+        return NextResponse.json(createValidationErrorResponse(error), {
           status: 400,
         });
       }

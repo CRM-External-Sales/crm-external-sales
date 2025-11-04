@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { withSecurity } from "@/lib/security-middleware";
@@ -13,6 +12,9 @@ export interface AuthenticatedUser {
 export interface AuthenticatedRequest extends NextRequest {
   user: AuthenticatedUser;
 }
+
+// Tipo para contexto adicional en handlers (puede extenderse según necesidad)
+export type RouteContext = Record<string, unknown> | { params: Record<string, string> };
 
 export async function authenticateRequest(
   request: NextRequest,
@@ -83,7 +85,7 @@ export function withAuth(
   handler: (
     request: AuthenticatedRequest,
     user: AuthenticatedUser,
-    context?: any,
+    context?: RouteContext,
   ) => Promise<NextResponse>,
 ) {
   return withSecurity({
@@ -93,7 +95,8 @@ export function withAuth(
       maxRequests: 100, // 100 requests por ventana
     },
     sanitizeInput: true,
-  })(async (request: NextRequest, context?: any): Promise<NextResponse> => {
+  })(async (request: NextRequest, ...args: unknown[]): Promise<NextResponse> => {
+    const context = args[0] as RouteContext | undefined;
     const authResult = await authenticateRequest(request);
 
     if (authResult instanceof NextResponse) {
@@ -113,14 +116,14 @@ export function withRole(requiredRole: "admin" | "agent" | "customer") {
     handler: (
       request: AuthenticatedRequest,
       user: AuthenticatedUser,
-      context?: any,
+      context?: RouteContext,
     ) => Promise<NextResponse>,
   ) {
     return withAuth(
       async (
         request: AuthenticatedRequest,
         user: AuthenticatedUser,
-        context?: any,
+        context?: RouteContext,
       ) => {
         if (user.role !== requiredRole && user.role !== "admin") {
           return NextResponse.json(
@@ -143,7 +146,7 @@ export function withAdminAuth(
   handler: (
     request: AuthenticatedRequest,
     user: AuthenticatedUser,
-    context?: any,
+    context?: RouteContext,
   ) => Promise<NextResponse>,
 ) {
   return withSecurity({
@@ -154,7 +157,8 @@ export function withAdminAuth(
       maxRequests: 50, // Menos requests para operaciones admin
     },
     sanitizeInput: true,
-  })(async (request: NextRequest, context?: any): Promise<NextResponse> => {
+  })(async (request: NextRequest, ...args: unknown[]): Promise<NextResponse> => {
+    const context = args[0] as RouteContext | undefined;
     const authResult = await authenticateRequest(request);
 
     if (authResult instanceof NextResponse) {

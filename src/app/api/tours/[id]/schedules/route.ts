@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedRequest } from "@/lib/auth-middleware";
-import { CreateTourScheduleSchema } from "@/app/schemas/tour.schema";
+import { CreateTourScheduleSchema, type CreateTourScheduleInput } from "@/app/schemas/tour.schema";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { serializeTourForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
@@ -130,7 +130,7 @@ export async function POST(
 
       // Parsear body (puede ser un schedule único o un array)
       const body = await authRequest.json();
-      let schedulesToCreate: any[] = [];
+      let schedulesToCreate: CreateTourScheduleInput[] = [];
 
       if (Array.isArray(body)) {
         // Si es un array, validar cada schedule
@@ -152,7 +152,13 @@ export async function POST(
         );
       }
 
-      const processedSchedules: any[] = [];
+      const processedSchedules: Array<{
+        id: number;
+        tour_id: number;
+        weekday: string;
+        start_time: string;
+        created_at: Date;
+      }> = [];
 
       // Crear cada schedule
       for (const scheduleData of schedulesToCreate) {

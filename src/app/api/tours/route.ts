@@ -8,6 +8,7 @@ import {
   CreateTourSchema,
   TourQuerySchema,
   CreateTourScheduleSchema,
+  type CreateTourScheduleInput,
 } from "@/app/schemas/tour.schema";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { serializeForJSON, serializeTourForJSON } from "@/lib/utils";
@@ -207,7 +208,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
 
     // 4. Extraer y validar schedules (si existen)
     const schedulesJson = formData.get("schedules");
-    let schedules: any[] = [];
+    let schedules: CreateTourScheduleInput[] = [];
     
     if (schedulesJson && typeof schedulesJson === "string") {
       try {
@@ -268,7 +269,11 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
     tourId = tour.id_tour;
 
     // 6. Crear los schedules del tour
-    const processedSchedules: any[] = [];
+    const processedSchedules: Array<{
+      id: number;
+      weekday: string;
+      start_time: string;
+    }> = [];
     
     if (schedules.length > 0) {
       for (const scheduleData of schedules) {
@@ -301,7 +306,13 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
     const isCovers = formData.getAll("is_covers[]").map((ic) => String(ic) === "true");
 
     const bucketName = "tours";
-    const processedImages: any[] = [];
+    const processedImages: Array<{
+      path: string;
+      alt: string | null;
+      sort_order: number;
+      is_cover: boolean;
+      url: string;
+    }> = [];
 
     if (imageFiles.length > 0) {
       for (let i = 0; i < imageFiles.length; i++) {

@@ -13,7 +13,7 @@ import {
   sanitizePhone,
 } from "@/lib/input-sanitizer";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
-import { Prisma } from "../../generated/prisma";
+
 import { ZodError } from "zod";
 
 // Tipo para where clause de app_user

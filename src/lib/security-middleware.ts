@@ -272,7 +272,15 @@ export function withAuthAndRole(requiredRole?: string) {
           );
         }
 
-        return handler(request, appUser, ...args);
+        // Convertir appUser a AuthUser (asegurando que email no sea null)
+        const authenticatedUser: AuthUser = {
+          id: appUser.id,
+          username: appUser.username,
+          email: appUser.email || "",
+          role: appUser.role,
+        };
+
+        return handler(request, authenticatedUser, ...args);
       } catch (error) {
         console.error("Error en autenticación:", error);
         return NextResponse.json(

@@ -1,13 +1,13 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Decimal } from "../generated/prisma";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 // Función para serializar BigInt a Number y Date con formato personalizado
-export function serializeForJSON(obj: any): any {
+export function serializeForJSON(obj: unknown): unknown {
   if (obj === null || obj === undefined) {
     return obj;
   }
@@ -25,7 +25,7 @@ export function serializeForJSON(obj: any): any {
   }
   
   if (typeof obj === "object") {
-    const serialized: any = {};
+    const serialized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       serialized[key] = serializeForJSON(value);
     }
@@ -36,7 +36,7 @@ export function serializeForJSON(obj: any): any {
 }
 
 // Función para serializar tours con formato especial para time y base_price
-export function serializeTourForJSON(obj: any): any {
+export function serializeTourForJSON(obj: unknown): unknown {
   if (obj === null || obj === undefined) {
     return obj;
   }
@@ -61,18 +61,21 @@ export function serializeTourForJSON(obj: any): any {
   }
 
   if (typeof obj === "object") {
-    const serialized: any = {};
+    const serialized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       // Si es un schedule individual, asegurarse de que start_time se formatee correctamente
       if (key === "tour_schedule" && Array.isArray(value)) {
-        serialized[key] = value.map((schedule: any) => ({
-          id: typeof schedule.id === "bigint" ? Number(schedule.id) : schedule.id,
-          weekday: schedule.weekday,
-          start_time:
-            schedule.start_time instanceof Date
-              ? `${String(schedule.start_time.getUTCHours()).padStart(2, "0")}:${String(schedule.start_time.getUTCMinutes()).padStart(2, "0")}`
-              : schedule.start_time,
-        }));
+        serialized[key] = value.map((schedule: unknown) => {
+          const scheduleObj = schedule as Record<string, unknown>;
+          return {
+            id: typeof scheduleObj.id === "bigint" ? Number(scheduleObj.id) : scheduleObj.id,
+            weekday: scheduleObj.weekday,
+            start_time:
+              scheduleObj.start_time instanceof Date
+                ? `${String(scheduleObj.start_time.getUTCHours()).padStart(2, "0")}:${String(scheduleObj.start_time.getUTCMinutes()).padStart(2, "0")}`
+                : scheduleObj.start_time,
+          };
+        });
       } else {
         serialized[key] = serializeTourForJSON(value);
       }

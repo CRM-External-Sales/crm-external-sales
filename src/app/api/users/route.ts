@@ -13,7 +13,7 @@ import {
   sanitizePhone,
 } from "@/lib/input-sanitizer";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
-import { Prisma } from "../../generated/prisma";
+import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 
 // Tipo para where clause de app_user
@@ -106,16 +106,16 @@ export const GET = withAdminAuth(
             error: "Parámetros de consulta inválidos",
             details: error.message,
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
       return NextResponse.json(
         { success: false, error: "Error interno del servidor" },
-        { status: 500 },
+        { status: 500 }
       );
     }
-  },
+  }
 );
 
 // POST /api/users - Crear nuevo usuario (solo admin)
@@ -154,7 +154,7 @@ export const POST = withAdminAuth(
                 ? "El email ya está registrado"
                 : "El nombre de usuario ya está en uso",
           },
-          { status: 409 },
+          { status: 409 }
         );
       }
 
@@ -170,7 +170,7 @@ export const POST = withAdminAuth(
             success: false,
             error: "Error al crear la cuenta de autenticación",
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -207,7 +207,7 @@ export const POST = withAdminAuth(
           message: "Usuario creado exitosamente",
           data: appUser,
         },
-        { status: 201 },
+        { status: 201 }
       );
     } catch (error) {
       console.error("Error creando usuario:", error);
@@ -220,8 +220,8 @@ export const POST = withAdminAuth(
 
       return NextResponse.json(
         { success: false, error: "Error interno del servidor" },
-        { status: 500 },
+        { status: 500 }
       );
     }
-  },
+  }
 );

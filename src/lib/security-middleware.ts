@@ -273,10 +273,13 @@ export function withAuthAndRole(requiredRole?: string) {
         }
 
         // Convertir appUser a AuthUser (asegurando que email no sea null)
+        // Extraer email y asegurar que sea string (no null)
+        const userEmail: string = appUser.email ?? "";
+        
         const authenticatedUser: AuthUser = {
           id: appUser.id,
           username: appUser.username,
-          email: appUser.email || "",
+          email: userEmail,
           role: appUser.role,
         };
 

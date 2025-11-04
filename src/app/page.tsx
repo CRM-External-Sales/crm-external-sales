@@ -7,9 +7,9 @@ export default function Home() {
   const [name, setName] = useState("Joel");
 
   const users = [
-    { id: 1, name: "Joel" },
-    { id: 2, name: "Ellie" },
-    { id: 3, name: "Tess" },
+    { id: 1, name: "Eddier" },
+    { id: 2, name: "Eddier" },
+    { id: 3, name: "Eddier" },
   ];
 
   useEffect(() => {

@@ -82,3 +82,31 @@ export function serializeTourForJSON(obj: any): any {
 
   return obj;
 }
+
+// Función para registrar acceso a suppliers
+// Log asíncrono simple: no bloquea la respuesta
+export function logSuppliersAccess(
+  user: { id: string; username: string; role: string },
+  filters: { company?: string; service?: string }
+): void {
+  //Ejecutar en el siguiente ciclo del event loop (no bloquea)
+  setImmediate(() => {
+    const logData = {
+      timestamp: new Date().toISOString(),
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      },
+      action: "GET_SUPPLIERS",
+      filters: {
+        // No exponer datos sensibles, solo indicar qué filtros se usaron
+        hasCompanyFilter: !!filters.company,
+        hasServiceFilter: !!filters.service,
+      },
+    };
+
+    // Log en consola (puede extenderse para guardar en BD)
+    console.log("📋 Suppliers Access Log:", JSON.stringify(logData, null, 2));
+  });
+}

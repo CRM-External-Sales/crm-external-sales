@@ -53,12 +53,18 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `PUT /api/transfers/:id` - Actualizar transfer existente (solo admin)
 - `DELETE /api/transfers/:id` - Eliminar transfer (solo admin)
 
+<<<<<<< HEAD
 ### 🏢 Gestión de Suppliers
 
 - `POST /api/suppliers` - Crear supplier (solo admin)
 ### 🏢 Gestión de Proveedores
 - `GET /api/suppliers` - Listar proveedores (solo admin y agent, con filtros: company, service, paginación)
 - `GET /api/suppliers/:corporate` - Obtener un proveedor específico por cédula jurídica (solo admin y agent)
+=======
+### 📅 Gestión de Reservas
+
+- `POST /api/reservations` - Crear nueva reserva (Agent y Admin). Calcula automáticamente totales basados en tours y transfers.
+>>>>>>> 809c2d9 (Add reservation endpoint)
 
 ## 📁 Archivos Creados
 
@@ -68,9 +74,13 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/schemas/tour.schema.ts` - Esquemas Zod para validación de tours
 - `src/app/schemas/tour-image.schema.ts` - Esquemas Zod para validación de imágenes de tours
 - `src/app/schemas/transfer.schema.ts` - Esquemas Zod para validación de transfers
+<<<<<<< HEAD
 - `src/app/schemas/supplier.schema.ts` - Esquemas Zod para validación de suppliers
 - `src/app/schemas/supplier.schema.ts` - Esquemas Zod para validación de proveedores
 - `src/app/schemas/report.schema.ts` - Esquemas Zod para validación de reportes
+=======
+- `src/app/schemas/reservation.schema.ts` - Esquemas Zod para validación de reservas
+>>>>>>> 809c2d9 (Add reservation endpoint)
 
 ### Endpoints de API
 
@@ -99,6 +109,7 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/api/transfers/route.ts` (GET y POST)
 - `src/app/api/transfers/[id]/route.ts` (PUT y DELETE)
 
+<<<<<<< HEAD
 **Suppliers:**
 - `src/app/api/suppliers/route.ts` (POST para crear suppliers)
 **Proveedores:**
@@ -107,6 +118,10 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 
 **Reports:**
 - `src/app/api/reports/route.ts` (GET - generate reports with metrics, admin only)
+=======
+**Reservas:**
+- `src/app/api/reservations/route.ts` (POST para crear reservas con cálculo automático)
+>>>>>>> 809c2d9 (Add reservation endpoint)
 
 ### Middleware y Utilidades
 
@@ -198,6 +213,7 @@ npx prisma db push
 - Validación de placas únicas
 - Incluye información del supplier
 
+<<<<<<< HEAD
 ### ✅ Gestión de Proveedores
 
 - Listado de proveedores con filtros (company, service)
@@ -217,6 +233,15 @@ npx prisma db push
 - Filtros por fecha, tour, estado, usuario
 - Acceso restringido solo a administradores
 - Datos en tiempo real desde la base de datos
+=======
+### ✅ Gestión de Reservas
+
+- Creación de reservas con cálculo automático de precios
+- Integración de Tours y Transfers en una sola reserva
+- Validación de disponibilidad y existencia de servicios
+- Cálculo automático de IVA y totales
+- Protección por roles (Agent/Admin)
+>>>>>>> 809c2d9 (Add reservation endpoint)
 
 ### ✅ Seguridad
 
@@ -452,6 +477,36 @@ const deleteResponse = await fetch('/api/transfers/12345', {
   method: 'DELETE',
   headers: { 'Authorization': `Bearer ${token}` }
 });
+
+### Ejemplos de Uso para Reservas
+
+```typescript
+// POST /api/reservations - Crear una nueva reserva
+const reservationData = {
+  tour_id: 1,
+  people: 2,
+  date: "2023-12-25T00:00:00.000Z", // Fecha en formato ISO
+  time: "09:30", // Hora en formato HH:MM
+  hotel_reservation: 101, // Número de habitación
+  note: "Cliente VIP, requiere silla de bebé",
+  transfer_id: 12345 // Opcional
+};
+
+const createReservationResponse = await fetch('/api/reservations', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify(reservationData)
+});
+
+const result = await createReservationResponse.json();
+if (result.success) {
+  console.log("Reserva creada:", result.data);
+  // data incluye: tour_amount, transfer_amount, subtotal, iva, total
+}
+```
 ```
 
 ### Ejemplos de Uso para Proveedores

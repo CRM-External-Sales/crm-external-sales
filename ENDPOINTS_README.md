@@ -64,7 +64,18 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 ### 📅 Gestión de Reservas
 
 - `POST /api/reservations` - Crear nueva reserva (Agent y Admin). Calcula automáticamente totales basados en tours y transfers.
+<<<<<<< HEAD
 >>>>>>> 809c2d9 (Add reservation endpoint)
+=======
+- `GET /api/reservations` - Listar reservas con filtros:
+  - `date`: Fecha específica (ISO o YYYY-MM-DD)
+  - `state`: Estado de la reserva (e.g. pending, confirmed)
+  - *Nota: Admin ve todas, Agentes solo las suyas.*
+- `PUT /api/reservations/[id]` - Actualizar reserva existente (Solo Admin):
+  - Permite modificar: `people`, `tour_id`, `transfer_id`, `date`, `time`, `hotel_reservation`, `note`, `state`.
+  - Calcula automáticamente los nuevos totales si cambian campos clave.
+  - Al cancelar (`state: "cancelled"`), se requiere `cancellation_reason`.
+>>>>>>> d487ac4 (update: mejoras en reservation)
 
 ## 📁 Archivos Creados
 
@@ -506,6 +517,37 @@ if (result.success) {
   console.log("Reserva creada:", result.data);
   // data incluye: tour_amount, transfer_amount, subtotal, iva, total
 }
+
+// GET /api/reservations - Buscar con filtros
+const searchResponse = await fetch('/api/reservations?date=2023-12-25&state=pending', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// PUT /api/reservations/[id] - Actualizar/Cancelar reserva
+const updateResponse = await fetch('/api/reservations/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    people: 3, // Actualiza cantidad (recalcula totales)
+    note: "Cliente agregó una persona más"
+  })
+});
+
+// Cancelar reserva
+const cancelResponse = await fetch('/api/reservations/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    state: "cancelled",
+    cancellation_reason: "Cliente canceló por clima"
+  })
+});
 ```
 ```
 

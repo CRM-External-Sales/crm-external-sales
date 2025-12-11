@@ -10,4 +10,25 @@ export const CreateReservationSchema = z.object({
   note: z.string().optional().default(""),
 });
 
+export const UpdateReservationSchema = z.object({
+  tour_id: z.number().int().positive().optional(),
+  transfer_id: z.number().int().positive().optional().nullable(), // Allow null to remove transfer
+  hotel_reservation: z.number().int().positive().optional(),
+  date: z.string().datetime().optional(),
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  people: z.number().int().positive().optional(),
+  state: z.enum(["pending", "confirmed", "cancelled", "completed"]).optional(),
+  cancellation_reason: z.string().optional(),
+  note: z.string().optional(),
+}).refine((data) => {
+  if (data.state === "cancelled" && !data.cancellation_reason) {
+    return false;
+  }
+  return true;
+}, {
+  message: "La razón de cancelación es requerida cuando el estado es cancelado",
+  path: ["cancellation_reason"],
+});
+
 export type CreateReservationInput = z.infer<typeof CreateReservationSchema>;
+export type UpdateReservationInput = z.infer<typeof UpdateReservationSchema>;

@@ -249,6 +249,16 @@ export interface TourImage {
   updated_at: string;
 }
 
+// Interfaces para Suppliers
+export interface Supplier {
+  corporate: number;
+  company: string;
+  phone: string;
+  email: string;
+  service: string;
+  created_at: string;
+}
+
 // Servicios de Tours
 export const tourService = {
   // Obtener todos los tours
@@ -363,6 +373,21 @@ export const tourService = {
   ): Promise<ApiResponse> => {
     const response = await http.delete(`/tours/${tourId}/images/${imageId}`);
     return response.data as ApiResponse;
+  },
+};
+
+// Servicios de Suppliers
+export const supplierService = {
+  // Crear supplier (solo admin)
+  createSupplier: async (supplierData: {
+    corporate: number;
+    company: string;
+    phone: string;
+    email: string;
+    service: string;
+  }): Promise<ApiResponse<Supplier>> => {
+    const response = await http.post("/suppliers", supplierData);
+    return response.data as ApiResponse<Supplier>;
   },
 };
 

@@ -53,6 +53,10 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `PUT /api/transfers/:id` - Actualizar transfer existente (solo admin)
 - `DELETE /api/transfers/:id` - Eliminar transfer (solo admin)
 
+### 🏢 Gestión de Suppliers
+
+- `POST /api/suppliers` - Crear supplier (solo admin)
+
 ## 📁 Archivos Creados
 
 ### Esquemas de Validación
@@ -61,6 +65,7 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/schemas/tour.schema.ts` - Esquemas Zod para validación de tours
 - `src/app/schemas/tour-image.schema.ts` - Esquemas Zod para validación de imágenes de tours
 - `src/app/schemas/transfer.schema.ts` - Esquemas Zod para validación de transfers
+- `src/app/schemas/supplier.schema.ts` - Esquemas Zod para validación de suppliers
 
 ### Endpoints de API
 
@@ -88,6 +93,9 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 **Transfers:**
 - `src/app/api/transfers/route.ts` (GET y POST)
 - `src/app/api/transfers/[id]/route.ts` (PUT y DELETE)
+
+**Suppliers:**
+- `src/app/api/suppliers/route.ts` (POST para crear suppliers)
 
 ### Middleware y Utilidades
 

@@ -56,6 +56,9 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 ### 🏢 Gestión de Suppliers
 
 - `POST /api/suppliers` - Crear supplier (solo admin)
+### 🏢 Gestión de Proveedores
+- `GET /api/suppliers` - Listar proveedores (solo admin y agent, con filtros: company, service, paginación)
+- `GET /api/suppliers/:corporate` - Obtener un proveedor específico por cédula jurídica (solo admin y agent)
 
 ## 📁 Archivos Creados
 
@@ -66,6 +69,8 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/schemas/tour-image.schema.ts` - Esquemas Zod para validación de imágenes de tours
 - `src/app/schemas/transfer.schema.ts` - Esquemas Zod para validación de transfers
 - `src/app/schemas/supplier.schema.ts` - Esquemas Zod para validación de suppliers
+- `src/app/schemas/supplier.schema.ts` - Esquemas Zod para validación de proveedores
+- `src/app/schemas/report.schema.ts` - Esquemas Zod para validación de reportes
 
 ### Endpoints de API
 
@@ -96,6 +101,12 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 
 **Suppliers:**
 - `src/app/api/suppliers/route.ts` (POST para crear suppliers)
+**Proveedores:**
+- `src/app/api/suppliers/route.ts` (GET - listar proveedores)
+- `src/app/api/suppliers/[corporate]/route.ts` (GET - obtener proveedor por cédula jurídica)
+
+**Reports:**
+- `src/app/api/reports/route.ts` (GET - generate reports with metrics, admin only)
 
 ### Middleware y Utilidades
 
@@ -186,6 +197,26 @@ npx prisma db push
 - Protección de eliminación si hay reservas
 - Validación de placas únicas
 - Incluye información del supplier
+
+### ✅ Gestión de Proveedores
+
+- Listado de proveedores con filtros (company, service)
+- Búsqueda por cédula jurídica (corporate)
+- Paginación automática
+- Ordenamiento por nombre de empresa
+- Incluye conteo de tours y transfers asociados
+- Acceso restringido a admin y agent
+- Validación de longitud mínima en filtros (2 caracteres)
+
+### ✅ Gestión de Reportes
+
+- Generación de reportes por período (trimestral, semestral, anual, personalizado)
+- Métricas agregadas (reservas canceladas/no canceladas, ingresos, descuentos, IVA)
+- Tours más y menos solicitados
+- Clientes recurrentes
+- Filtros por fecha, tour, estado, usuario
+- Acceso restringido solo a administradores
+- Datos en tiempo real desde la base de datos
 
 ### ✅ Seguridad
 
@@ -423,6 +454,39 @@ const deleteResponse = await fetch('/api/transfers/12345', {
 });
 ```
 
+### Ejemplos de Uso para Proveedores
+
+```typescript
+// GET /api/suppliers - Obtener todos los proveedores con filtros (solo admin y agent)
+const response = await fetch('/api/suppliers?company=Tour&service=Transport&page=1&limit=10', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// GET /api/suppliers/:corporate - Obtener un proveedor específico por cédula jurídica
+const supplierResponse = await fetch('/api/suppliers/123456789', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+### Ejemplos de Uso para Reportes
+
+```typescript
+// GET /api/reports - Reporte trimestral (solo admin)
+const reportResponse = await fetch('/api/reports?tipo_reporte=trimestral', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// GET /api/reports - Reporte personalizado con filtros
+const customReport = await fetch('/api/reports?fecha_inicio=2024-01-01&fecha_fin=2024-12-31&estado=confirmada&limit=500', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// GET /api/reports - Reporte por tour específico
+const tourReport = await fetch('/api/reports?tipo_reporte=anual&tourId=123', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
 ## 🚨 Notas Importantes
 
 1. **Regenerar Prisma**: Es crucial ejecutar `npx prisma generate` después de estos cambios
@@ -430,6 +494,8 @@ const deleteResponse = await fetch('/api/transfers/12345', {
 3. **Permisos**: 
    - Los endpoints de gestión de usuarios requieren rol de admin
    - Los endpoints de Tours y Transfers requieren rol de admin
+   - Los endpoints de Proveedores requieren rol de admin o agent
+   - Los endpoints de Reportes requieren rol de admin (RF-RP5)
    - **Nota**: Si necesitas agregar un rol "supplier" específico, deberás modificar el enum `user_role` en el schema de Prisma
 4. **Validación**: Todos los datos de entrada están validados con Zod
 5. **Seguridad**: Los tokens se manejan automáticamente en el frontend

@@ -14,7 +14,6 @@ export const supabase = createClient(
         eventsPerSecond: 10,
       },
     },
-<<<<<<< HEAD
   },
 );
 
@@ -27,7 +26,4 @@ export const supabaseAdmin = createClient(
       persistSession: false,
     },
   },
-=======
-  }
->>>>>>> 809c2d9 (Add reservation endpoint)
 );

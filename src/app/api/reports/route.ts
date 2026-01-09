@@ -243,7 +243,6 @@ export const GET = withAdminAuth(
           ingresos_totales: Number(tour.ingresos_totales),
         }));
 
-      // Clientes recurrentes (más de una reserva)
       const clientCounts = new Map<
         string,
         {

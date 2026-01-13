@@ -8,7 +8,6 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 
 - `POST /api/auth/login` - Inicio de sesión
 - `POST /api/auth/logout` - Cerrar sesión
-- `GET /api/auth/me` - Obtener usuario actual
 - `POST /api/auth/change-password` - Cambiar contraseña
 - `POST /api/auth/forgot-password` - Solicitar restablecimiento
 - `POST /api/auth/reset-password` - Restablecer contraseña
@@ -42,6 +41,13 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `PUT /api/tours/:id/images/:imageId` - Actualizar imagen (solo admin)
 - `DELETE /api/tours/:id/images/:imageId` - Eliminar imagen (solo admin)
 
+#### 🕒 Gestión de Horarios de Tours (Schedules)
+
+- `GET /api/tours/:id/schedules` - Listar horarios de un tour
+- `POST /api/tours/:id/schedules` - Agregar uno o varios horarios (solo admin)
+- `PUT /api/tours/:id/schedules/:scheduleId` - Actualizar horario (solo admin)
+- `DELETE /api/tours/:id/schedules/:scheduleId` - Eliminar horario (solo admin)
+
 #### 📤 Subida de Archivos
 
 - `POST /api/upload` - Subir imagen local a Supabase Storage (solo admin)
@@ -53,10 +59,31 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `PUT /api/transfers/:id` - Actualizar transfer existente (solo admin)
 - `DELETE /api/transfers/:id` - Eliminar transfer (solo admin)
 
-### 🏢 Gestión de Proveedores
+### 🏢 Gestión de Proveedores (Suppliers)
 
-- `GET /api/suppliers` - Listar proveedores (solo admin y agent, con filtros: company, service, paginación)
-- `GET /api/suppliers/:corporate` - Obtener un proveedor específico por cédula jurídica (solo admin y agent)
+- `POST /api/suppliers` - Crear proveedor (solo admin)
+- `GET /api/suppliers` - Listar proveedores (admin y agent; filtros: company, service, paginación)
+- `GET /api/suppliers/:corporate` - Obtener proveedor por cédula jurídica (admin y agent)
+- `PUT /api/suppliers/:corporate` - Actualizar proveedor (solo admin)
+- `DELETE /api/suppliers/:corporate` - Eliminar proveedor (solo admin; bloqueado si hay tours/transfers asociados)
+
+### 📅 Gestión de Reservas
+
+- `POST /api/reservations` - Crear nueva reserva (Agent y Admin). Calcula automáticamente totales del tour y del transfer.
+- `GET /api/reservations` - Listar reservas con filtros:
+  - `date`: Fecha específica (ISO o YYYY-MM-DD)
+  - `state`: Estado de la reserva (e.g. pending, confirmed)
+  - Nota: Admin ve todas; agentes solo las propias.
+- `GET /api/reservations/:id` - Obtener reserva por ID (Admin o propietario)
+- `PUT /api/reservations/:id` - Actualizar/Cancelar reserva (Solo Admin):
+  - Permite modificar: `people`, `tour_id`, `transfer_id`, `date`, `time`, `hotel_reservation`, `note`, `state`.
+  - Recalcula montos si cambian `tour_id`, `people` o `transfer_id`.
+  - Al cancelar (`state: "cancelled"`), se requiere `cancellation_reason`.
+
+### 🛠️ Herramientas de Desarrollo
+
+- `GET /api/dev/reset-rate-limit` - Ver estadísticas de rate limiting (solo en desarrollo)
+- `POST /api/dev/reset-rate-limit` - Resetear rate limiting (solo en desarrollo)
 
 ## 📁 Archivos Creados
 
@@ -68,6 +95,7 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/schemas/transfer.schema.ts` - Esquemas Zod para validación de transfers
 - `src/app/schemas/supplier.schema.ts` - Esquemas Zod para validación de proveedores
 - `src/app/schemas/report.schema.ts` - Esquemas Zod para validación de reportes
+- `src/app/schemas/reservation.schema.ts` - Esquemas Zod para validación de reservas
 
 ### Endpoints de API
 
@@ -88,6 +116,8 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/api/tours/[id]/route.ts` (PUT y DELETE)
 - `src/app/api/tours/[id]/images/route.ts` (GET y POST de imágenes)
 - `src/app/api/tours/[id]/images/[imageId]/route.ts` (PUT y DELETE de imágenes)
+- `src/app/api/tours/[id]/schedules/route.ts` (GET y POST de horarios)
+- `src/app/api/tours/[id]/schedules/[scheduleId]/route.ts` (PUT y DELETE de horarios)
 
 **Upload:**
 - `src/app/api/upload/route.ts` (POST para subir imágenes)
@@ -97,11 +127,18 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/api/transfers/[id]/route.ts` (PUT y DELETE)
 
 **Proveedores:**
-- `src/app/api/suppliers/route.ts` (GET - listar proveedores)
-- `src/app/api/suppliers/[corporate]/route.ts` (GET - obtener proveedor por cédula jurídica)
+- `src/app/api/suppliers/route.ts` (GET - listar; POST - crear)
+- `src/app/api/suppliers/[corporate]/route.ts` (GET - obtener; PUT - actualizar; DELETE - eliminar)
 
-**Reports:**
-- `src/app/api/reports/route.ts` (GET - generate reports with metrics, admin only)
+**Reservas:**
+- `src/app/api/reservations/route.ts` (GET - listar; POST - crear con cálculo automático)
+- `src/app/api/reservations/[id]/route.ts` (GET - obtener por ID; PUT - actualizar/cancelar)
+
+**Reportes:**
+- `src/app/api/reports/route.ts` (GET - generar reportes con métricas; solo admin)
+
+**Desarrollo:**
+- `src/app/api/dev/reset-rate-limit/route.ts` (GET/POST - herramientas de rate limit en desarrollo)
 
 ### Middleware y Utilidades
 
@@ -212,6 +249,14 @@ npx prisma db push
 - Filtros por fecha, tour, estado, usuario
 - Acceso restringido solo a administradores
 - Datos en tiempo real desde la base de datos
+
+### ✅ Gestión de Reservas
+
+- Creación de reservas con cálculo automático de precios
+- Integración de Tours y Transfers en una sola reserva
+- Validación de disponibilidad y existencia de servicios
+- Cálculo automático de IVA y totales
+- Protección por roles (Agent/Admin)
 
 ### ✅ Seguridad
 
@@ -447,8 +492,72 @@ const deleteResponse = await fetch('/api/transfers/12345', {
   method: 'DELETE',
   headers: { 'Authorization': `Bearer ${token}` }
 });
-```
 
+### Ejemplos de Uso para Reservas
+
+```typescript
+// POST /api/reservations - Crear una nueva reserva
+const reservationData = {
+  tour_id: 1,
+  people: 2,
+  date: "2023-12-25T00:00:00.000Z", // Fecha en formato ISO
+  time: "09:30", // Hora en formato HH:MM
+  hotel_reservation: 101, // Número de habitación
+  note: "Cliente VIP, requiere silla de bebé",
+  transfer_id: 12345 // Opcional
+};
+
+const createReservationResponse = await fetch('/api/reservations', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify(reservationData)
+});
+
+const result = await createReservationResponse.json();
+if (result.success) {
+  console.log("Reserva creada:", result.data);
+  // data incluye: tour_amount, transfer_amount, subtotal, iva, total
+}
+
+// GET /api/reservations - Buscar con filtros
+const searchResponse = await fetch('/api/reservations?date=2023-12-25&state=pending', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// GET /api/reservations/:id - Obtener una reserva por ID
+const getById = await fetch('/api/reservations/1', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// PUT /api/reservations/[id] - Actualizar/Cancelar reserva
+const updateResponse = await fetch('/api/reservations/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    people: 3, // Actualiza cantidad (recalcula totales)
+    note: "Cliente agregó una persona más"
+  })
+});
+
+// Cancelar reserva
+const cancelResponse = await fetch('/api/reservations/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    state: "cancelled",
+    cancellation_reason: "Cliente canceló por clima"
+  })
+});
+```
 ### Ejemplos de Uso para Proveedores
 
 ```typescript
@@ -459,6 +568,38 @@ const response = await fetch('/api/suppliers?company=Tour&service=Transport&page
 
 // GET /api/suppliers/:corporate - Obtener un proveedor específico por cédula jurídica
 const supplierResponse = await fetch('/api/suppliers/123456789', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// POST /api/suppliers - Crear proveedor (solo admin)
+const createSupplier = await fetch('/api/suppliers', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    corporate: 123456789,
+    company: "Proveedor X",
+    phone: "8888-8888",
+    email: "contacto@proveedorx.com",
+    service: "Transport"
+  })
+});
+
+// PUT /api/suppliers/:corporate - Actualizar proveedor (solo admin)
+const updateSupplier = await fetch('/api/suppliers/123456789', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({ phone: "2222-2222" })
+});
+
+// DELETE /api/suppliers/:corporate - Eliminar proveedor (solo admin)
+const deleteSupplier = await fetch('/api/suppliers/123456789', {
+  method: 'DELETE',
   headers: { 'Authorization': `Bearer ${token}` }
 });
 ```
@@ -479,6 +620,28 @@ const customReport = await fetch('/api/reports?fecha_inicio=2024-01-01&fecha_fin
 // GET /api/reports - Reporte por tour específico
 const tourReport = await fetch('/api/reports?tipo_reporte=anual&tourId=123', {
   headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+### Ejemplos de Uso para Schedules de Tours
+
+```typescript
+// GET /api/tours/:id/schedules - Listar horarios del tour
+const schedules = await fetch('/api/tours/1/schedules', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// POST /api/tours/:id/schedules - Agregar horarios (solo admin)
+const addSchedules = await fetch('/api/tours/1/schedules', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify([
+    { weekday: "Monday", start_time: "09:00" },
+    { weekday: "Wednesday", start_time: "14:00" }
+  ])
 });
 ```
 

@@ -5,57 +5,98 @@ import { ReportQuerySchema } from "@/app/schemas/report.schema";
 import { serializeForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
+import { validarFiltrosParaTipoReporte, construirWhereClause, calcularKPIsGenerales, FiltrosReporte, TipoReporte, GranularidadTemporal,} from "@/lib/report-helpers";
+import { agregarReservasPorTiempo, agregarReservasPorEstado, agregarReservasPorEmpleado, agregarIngresosPorTiempo, agregarIngresosPorTour,} from "@/lib/report-aggregations";
 
-// Función para calcular fechas según el tipo de reporte
-function calculateDateRange(
-  tipoReporte: string,
-  fechaInicio?: string,
-  fechaFin?: string,
-): { inicio: Date; fin: Date } {
-  const now = new Date();
-  let inicio: Date;
-  let fin: Date = new Date(now);
+/**
+ * Genera el reporte según el tipo especificado
+ * 
+ * @param tipoReporte - Tipo de reporte a generar
+ * @param granularidadTemporal - Granularidad para reportes de tiempo (semana, mes, trimestre, año)
+ * @param filtros - Filtros aplicados al reporte
+ * @returns Objeto con KPIs, datos del gráfico y reservas
+ */
+async function generarReporte(
+  tipoReporte: TipoReporte,
+  granularidadTemporal: GranularidadTemporal | undefined,
+  filtros: FiltrosReporte,
+) {
+  // Construir WHERE clause según filtros permitidos
+  const whereClause = construirWhereClause(tipoReporte, filtros);
 
-  if (fechaInicio && fechaFin) {
-    // Si se proporcionan fechas personalizadas, usarlas
-    inicio = new Date(fechaInicio);
-    fin = new Date(fechaFin);
-  } else {
-    // Calcular según el tipo de reporte
-    switch (tipoReporte) {
-      case "trimestral":
-        inicio = new Date(now);
-        inicio.setMonth(now.getMonth() - 3);
-        break;
-      case "semestral":
-        inicio = new Date(now);
-        inicio.setMonth(now.getMonth() - 6);
-        break;
-      case "anual":
-        inicio = new Date(now);
-        inicio.setFullYear(now.getFullYear() - 1);
-        break;
-      default:
-        // Personalizado: último año por defecto
-        inicio = new Date(now);
-        inicio.setFullYear(now.getFullYear() - 1);
+  // Obtener reservas con relaciones necesarias
+  const reservations = await prisma.reservation.findMany({
+    where: whereClause,
+    include: {
+      tour: {
+        select: {
+          id_tour: true,
+          name: true,
+          type: true,
+        },
+      },
+      app_user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      date: "desc",
+    },
+  });
+
+  //KPIs generales
+  const kpis = calcularKPIsGenerales(reservations);
+
+  //Datos del gráfico según el tipo de reporte
+  let datosGrafico: unknown;
+
+  switch (tipoReporte) {
+    case "reservas_tiempo": {
+      if (!granularidadTemporal) {
+        throw new Error("granularidad_temporal es requerida para reportes de tiempo");
+      }
+      datosGrafico = agregarReservasPorTiempo(reservations, granularidadTemporal);
+      break;
     }
+    case "reservas_estado":
+      datosGrafico = agregarReservasPorEstado(reservations);
+      break;
+    case "reservas_empleado":
+      datosGrafico = agregarReservasPorEmpleado(reservations);
+      break;
+    case "ingresos_tiempo": {
+      if (!granularidadTemporal) {
+        throw new Error("granularidad_temporal es requerida para reportes de tiempo");
+      }
+      datosGrafico = agregarIngresosPorTiempo(reservations, granularidadTemporal);
+      break;
+    }
+    case "ingresos_tour":
+      datosGrafico = agregarIngresosPorTour(reservations);
+      break;
+    default:
+      throw new Error(`Tipo de reporte no reconocido: ${tipoReporte}`);
   }
 
-  // Asegurar que fin sea el final del día
-  fin.setHours(23, 59, 59, 999);
-  inicio.setHours(0, 0, 0, 0);
-
-  return { inicio, fin };
+  return {
+    kpis,
+    datosGrafico,
+    totalReservas: reservations.length,
+  };
 }
 
-// Función para registrar auditoría
+/**
+ * Registra el acceso al reporte para auditoría
+ */
 async function logReportAccess(
   userId: string,
   filters: Record<string, unknown>,
 ): Promise<void> {
   try {
-    // Registrar en consola
     console.log("Report Access Log:", {
       userId,
       timestamp: new Date().toISOString(),
@@ -66,278 +107,114 @@ async function logReportAccess(
   }
 }
 
-// GET /api/reports - Get reports with aggregated metrics
-// RF-RP5: Only users with administrator role can generate, view and export reports
+/**
+ * GET /api/reports
+ * 
+ * Genera reportes dinámicos según el tipo especificado.
+ * 
+ * Query Parameters:
+ * - tipo_reporte: Tipo de reporte (reservas_tiempo, reservas_estado, reservas_empleado, ingresos_tiempo, ingresos_tour)
+ * - granularidad_temporal: Solo para reportes de tiempo (semana, mes, trimestre, año)
+ * - fecha_inicio: Fecha de inicio (obligatorio, formato ISO)
+ * - fecha_fin: Fecha de fin (obligatorio, formato ISO)
+ * - tourId: ID del tour (opcional, según tipo de reporte)
+ * - usuarioId: ID del empleado (opcional, según tipo de reporte)
+ * - estado: Estado de la reserva (opcional, según tipo de reporte)
+ * - tipo_reserva: Tipo de reserva (con_transfer, sin_transfer) (opcional)
+ * 
+ * RF-RP5: Only users with administrator role can generate, view and export reports
+ */
 export const GET = withAdminAuth(
   async (request: AuthenticatedRequest, user: AuthenticatedUser) => {
     try {
       const { searchParams } = new URL(request.url);
       const queryParams = Object.fromEntries(searchParams.entries());
 
-      // Validar query params
-      const validatedQuery = ReportQuerySchema.parse(queryParams);
+      // 1. Validar query params con Zod
+      let validatedQuery;
+      try {
+        validatedQuery = ReportQuerySchema.parse(queryParams);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return NextResponse.json(
+            createValidationErrorResponse(error),
+            { status: 400 },
+          );
+        }
+        throw error;
+      }
+
       const {
+        tipo_reporte,
+        granularidad_temporal,
         fecha_inicio,
         fecha_fin,
-        tipo_reporte,
         tourId,
         usuarioId,
         estado,
-        limit,
+        tipo_reserva,
       } = validatedQuery;
 
-      // Calcular rango de fechas
-      const { inicio, fin } = calculateDateRange(
-        tipo_reporte || "personalizado",
+      // 2. Preparar objeto de filtros
+      const filtros: FiltrosReporte = {
         fecha_inicio,
         fecha_fin,
-      );
-
-      // Construir filtros base
-      //Solo admin puede acceder, por lo que puede ver todas las reservas
-      const baseWhere: Record<string, unknown> = {
-        date: {
-          gte: inicio,
-          lte: fin,
-        },
+        tourId,
+        usuarioId,
+        estado,
+        tipo_reserva,
       };
 
-      // Aplicar filtros adicionales
-      if (tourId) {
-        baseWhere.tour_id = tourId;
-      }
-
-      if (usuarioId) {
-        // Admin puede filtrar por cualquier usuario
-        baseWhere.employee_user = usuarioId;
-      }
-
-      if (estado) {
-        baseWhere.state = estado;
-      }
-
-      // Obtener todas las reservas que cumplen los filtros
-      const reservations = await prisma.reservation.findMany({
-        where: baseWhere,
-        include: {
-          tour: {
-            select: {
-              id_tour: true,
-              name: true,
-              type: true,
-            },
-          },
-          app_user: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-            },
-          },
-        },
-        take: limit,
-        orderBy: {
-          date: "desc",
-        },
-      });
-
-      // Si no hay reservas, retornar estructura vacía
-      if (reservations.length === 0) {
+      // 3. Validar filtros según el tipo de reporte
+      const validacionFiltros = validarFiltrosParaTipoReporte(tipo_reporte, filtros);
+      if (!validacionFiltros.valido) {
         return NextResponse.json(
           {
-            success: true,
-            data: {
-              periodo: {
-                fecha_inicio: inicio.toISOString(),
-                fecha_fin: fin.toISOString(),
-                tipo_reporte: tipo_reporte || "personalizado",
-              },
-              metricas: {
-                total_reservas: 0,
-                reservas_canceladas: 0,
-                reservas_no_canceladas: 0,
-                total_ingresos: 0,
-                total_descuentos: 0,
-                total_iva: 0,
-                promedio_reserva: 0,
-              },
-              tours_mas_solicitados: [],
-              tours_menos_solicitados: [],
-              clientes_recurrentes: [],
-              reservas_detalladas: [],
-            },
-            message: "No se encontraron reservas para el período seleccionado",
+            success: false,
+            error: validacionFiltros.error || "Filtros inválidos para el tipo de reporte",
           },
-          { status: 200 },
+          { status: 400 },
         );
       }
 
-      // Calcular métricas agregadas
-      const totalReservas = reservations.length;
-      const reservasCanceladas = reservations.filter(
-        (r) => r.state.toLowerCase().includes("cancel") || r.state.toLowerCase() === "cancelada",
-      ).length;
-      const reservasNoCanceladas = totalReservas - reservasCanceladas;
+      // 4. Validar granularidad temporal si es requerida
+      if ((tipo_reporte === "reservas_tiempo" || tipo_reporte === "ingresos_tiempo") && !granularidad_temporal) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "granularidad_temporal es requerida para reportes de tiempo",
+          },
+          { status: 400 },
+        );
+      }
 
-      // Calcular totales financieros
-      const totalIngresos = reservations.reduce(
-        (sum, r) => sum + Number(r.total),
-        0,
-      );
-      const totalDescuentos = reservations.reduce(
-        (sum, r) => sum + Number(r.discount),
-        0,
-      );
-      const totalIva = reservations.reduce(
-        (sum, r) => sum + Number(r.iva),
-        0,
-      );
-      const promedioReserva = totalReservas > 0 ? totalIngresos / totalReservas : 0;
+      // 5. Generar el reporte
+      const reporte = await generarReporte(tipo_reporte, granularidad_temporal, filtros);
 
-      // Tours más y menos solicitados
-      const tourCounts = new Map<
-        bigint,
-        {
-          tour_id: bigint;
-          nombre_tour: string;
-          tipo_tour: string;
-          cantidad_reservas: number;
-          ingresos_totales: number;
-        }
-      >();
-
-      reservations.forEach((reservation) => {
-        const tourId = reservation.tour_id;
-        const existing = tourCounts.get(tourId);
-
-        if (existing) {
-          existing.cantidad_reservas += 1;
-          existing.ingresos_totales += Number(reservation.total);
-        } else {
-          tourCounts.set(tourId, {
-            tour_id: tourId,
-            nombre_tour: reservation.tour.name,
-            tipo_tour: reservation.tour.type,
-            cantidad_reservas: 1,
-            ingresos_totales: Number(reservation.total),
-          });
-        }
-      });
-
-      const toursArray = Array.from(tourCounts.values());
-      const toursMasSolicitados = toursArray
-        .sort((a, b) => b.cantidad_reservas - a.cantidad_reservas)
-        .slice(0, 10)
-        .map((tour) => ({
-          ...tour,
-          tour_id: tour.tour_id.toString(),
-          ingresos_totales: Number(tour.ingresos_totales),
-        }));
-
-      const toursMenosSolicitados = toursArray
-        .sort((a, b) => a.cantidad_reservas - b.cantidad_reservas)
-        .slice(0, 10)
-        .map((tour) => ({
-          ...tour,
-          tour_id: tour.tour_id.toString(),
-          ingresos_totales: Number(tour.ingresos_totales),
-        }));
-
-      const clientCounts = new Map<
-        string,
-        {
-          usuario_id: string;
-          username: string;
-          email: string | null;
-          cantidad_reservas: number;
-          total_gastado: number;
-        }
-      >();
-
-      reservations.forEach((reservation) => {
-        const userId = reservation.employee_user;
-        const existing = clientCounts.get(userId);
-
-        if (existing) {
-          existing.cantidad_reservas += 1;
-          existing.total_gastado += Number(reservation.total);
-        } else {
-          clientCounts.set(userId, {
-            usuario_id: userId,
-            username: reservation.app_user.username,
-            email: reservation.app_user.email,
-            cantidad_reservas: 1,
-            total_gastado: Number(reservation.total),
-          });
-        }
-      });
-
-      const clientesRecurrentes = Array.from(clientCounts.values())
-        .filter((client) => client.cantidad_reservas > 1)
-        .sort((a, b) => b.cantidad_reservas - a.cantidad_reservas)
-        .slice(0, 20)
-        .map((client) => ({
-          ...client,
-          total_gastado: Number(client.total_gastado),
-        }));
-
-      // Preparar reservas detalladas para el frontend
-      const reservasDetalladas = reservations.map((r) => ({
-        reservation_id: r.reservation_id.toString(),
-        fecha: r.date.toISOString(),
-        hora: r.time.toString(),
-        tour: {
-          id: r.tour.id_tour.toString(),
-          nombre: r.tour.name,
-          tipo: r.tour.type,
-        },
-        usuario: {
-          id: r.app_user.id,
-          username: r.app_user.username,
-          email: r.app_user.email,
-        },
-        estado: r.state,
-        personas: r.people,
-        total: Number(r.total),
-        subtotal: Number(r.subtotal),
-        iva: Number(r.iva),
-        descuento: Number(r.discount),
-        created_at: r.created_at.toISOString(),
-      }));
+      // 6. Preparar fechas para la respuesta 
+      const inicio = new Date(filtros.fecha_inicio + 'T00:00:00.000Z');
+      const fin = new Date(filtros.fecha_fin + 'T23:59:59.999Z');
 
       // Registrar auditoría
       await logReportAccess(user.id, {
-        fecha_inicio: inicio.toISOString(),
-        fecha_fin: fin.toISOString(),
         tipo_reporte,
-        tourId: tourId?.toString(),
-        usuarioId,
-        estado,
+        granularidad_temporal,
+        ...filtros,
       });
 
-      // Construir respuesta
+      // Construir respuesta final
       const responseData = {
+        tipo_reporte,
+        granularidad_temporal: granularidad_temporal || null,
         periodo: {
           fecha_inicio: inicio.toISOString(),
           fecha_fin: fin.toISOString(),
-          tipo_reporte: tipo_reporte || "personalizado",
         },
-        metricas: {
-          total_reservas: totalReservas,
-          reservas_canceladas: reservasCanceladas,
-          reservas_no_canceladas: reservasNoCanceladas,
-          total_ingresos: Number(totalIngresos.toFixed(2)),
-          total_descuentos: Number(totalDescuentos.toFixed(2)),
-          total_iva: Number(totalIva.toFixed(2)),
-          promedio_reserva: Number(promedioReserva.toFixed(2)),
-        },
-        tours_mas_solicitados: toursMasSolicitados,
-        tours_menos_solicitados: toursMenosSolicitados,
-        clientes_recurrentes: clientesRecurrentes,
-        reservas_detalladas: reservasDetalladas,
+        kpis: reporte.kpis,
+        datosGrafico: reporte.datosGrafico,
+        totalReservas: reporte.totalReservas,
       };
 
-      // Serializar para asegurar que BigInt y otros tipos se conviertan correctamente
       const serializedResponse = serializeForJSON(responseData);
 
       return NextResponse.json(
@@ -350,10 +227,21 @@ export const GET = withAdminAuth(
     } catch (error) {
       console.error("Error generando reporte:", error);
 
-      // Manejar errores de validación
+      // Manejar errores de validación de Zod
       if (error instanceof ZodError) {
         return NextResponse.json(
           createValidationErrorResponse(error),
+          { status: 400 },
+        );
+      }
+
+      // Manejar errores de validación de filtros
+      if (error instanceof Error && error.message.includes("requerida")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: error.message,
+          },
           { status: 400 },
         );
       }
@@ -369,8 +257,3 @@ export const GET = withAdminAuth(
     }
   },
 );
-
-
-
-
-

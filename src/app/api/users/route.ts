@@ -13,6 +13,7 @@ import {
   sanitizePhone,
 } from "@/lib/input-sanitizer";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
+import { serializeForJSON } from "@/lib/utils";
 
 import { ZodError } from "zod";
 
@@ -88,7 +89,7 @@ export const GET = withAdminAuth(
 
       return NextResponse.json({
         success: true,
-        data: users,
+        data: serializeForJSON(users),
         pagination: {
           page,
           limit,

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Link from "next/link";
 import { ReactQueryClientProvider } from "@/providers/ReactQuery";
 
 const geistSans = Geist({
@@ -30,9 +29,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ReactQueryClientProvider>
-          <header className="w-full justify-content-between">
-            Logo <Link href="/home">Home</Link>
-          </header>
           {children}
         </ReactQueryClientProvider>
       </body>

@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Decimal } from "@/generated/prisma/runtime/library";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -45,8 +44,13 @@ export function serializeTourForJSON(obj: any): any {
     return Number(obj);
   }
 
-  if (obj instanceof Decimal) {
-    return obj.toNumber();
+  // Evitar dependencia directa de Prisma Decimal en cliente
+  if (obj && typeof obj === "object" && typeof (obj as any).toNumber === "function") {
+    try {
+      return (obj as any).toNumber();
+    } catch {
+      // continuar si falla
+    }
   }
 
   if (obj instanceof Date) {
@@ -90,7 +94,7 @@ export function logSuppliersAccess(
   filters: { company?: string; service?: string }
 ): void {
   //Ejecutar en el siguiente ciclo del event loop (no bloquea)
-  setImmediate(() => {
+  setTimeout(() => {
     const logData = {
       timestamp: new Date().toISOString(),
       user: {
@@ -108,5 +112,5 @@ export function logSuppliersAccess(
 
     // Log en consola (puede extenderse para guardar en BD)
     console.log("📋 Suppliers Access Log:", JSON.stringify(logData, null, 2));
-  });
+  }, 0);
 }

@@ -99,7 +99,7 @@ export async function PUT(
   
   const handler = withAuth(async (authRequest: AuthenticatedRequest, user) => {
     try {
-      const body = await request.json();
+      const body = await authRequest.json();
       const validatedData = UpdateUserSchema.parse(body);
 
       // Sanitizar datos de entrada

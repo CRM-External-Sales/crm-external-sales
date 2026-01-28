@@ -64,7 +64,9 @@ export const authService = {
 
   // Obtener usuario actual
   getCurrentUser: async (): Promise<ApiResponse<User>> => {
-    const response = await http.get("/auth/me");
+    // En este proyecto el backend expone el "me" como GET /api/auth/logout
+    // (no existe /api/auth/me), así evitamos el 404.
+    const response = await http.get("/auth/logout");
     return response.data as ApiResponse<User>;
   },
 

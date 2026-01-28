@@ -1,5 +1,11 @@
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { View } from "@/features/home/View";
 
 export default function HomePage() {
-  return <View />;
+  return (
+    <DashboardLayout>
+      <View />
+    </DashboardLayout>
+  );
 }
+

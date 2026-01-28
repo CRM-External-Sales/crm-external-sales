@@ -55,7 +55,7 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-[#1A1F1B] data-[state=open]:text-white hover:bg-[#1A1F1B] hover:text-white text-white"
             >
-              <CircleUser className="h-8 w-8 text-white" />
+              <CircleUser className="size-18 text-white" />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium text-white">{user.name}</span>
                 <span className="truncate text-xs text-white/80">{user.email}</span>
@@ -71,7 +71,7 @@ export function NavUser({
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <CircleUser className="h-8 w-8 text-white" />
+                <CircleUser className="size-10 text-white" />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium text-white">{user.name}</span>
                   <span className="truncate text-xs text-white/70">{user.email}</span>

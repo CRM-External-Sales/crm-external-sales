@@ -35,7 +35,7 @@ export function NavMain({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-white">Gestiones</SidebarGroupLabel>
+      <SidebarGroupLabel className="text-white" style={{ fontSize: '14px' }}>Gestiones</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           // Si el item no tiene subitems, renderizarlo como un enlace simple

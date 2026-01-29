@@ -29,7 +29,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </span>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto px-6 py-10">
           {children}
         </main>
       </SidebarInset>

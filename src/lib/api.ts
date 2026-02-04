@@ -378,6 +378,25 @@ export const tourService = {
 
 // Servicios de Suppliers
 export const supplierService = {
+  // Obtener todos los suppliers (admin/agent)
+  getSuppliers: async (params?: {
+    page?: number;
+    limit?: number;
+    company?: string;
+    service?: string;
+  }): Promise<ApiResponse<Supplier[]>> => {
+    const response = await http.get("/suppliers", { params });
+    return response.data as ApiResponse<Supplier[]>;
+  },
+
+  // Obtener supplier por corporate (admin/agent)
+  getSupplierByCorporate: async (
+    corporate: number,
+  ): Promise<ApiResponse<Supplier>> => {
+    const response = await http.get(`/suppliers/${corporate}`);
+    return response.data as ApiResponse<Supplier>;
+  },
+
   // Crear supplier (solo admin)
   createSupplier: async (supplierData: {
     corporate: number;
@@ -388,6 +407,26 @@ export const supplierService = {
   }): Promise<ApiResponse<Supplier>> => {
     const response = await http.post("/suppliers", supplierData);
     return response.data as ApiResponse<Supplier>;
+  },
+
+  // Actualizar supplier (solo admin)
+  updateSupplier: async (
+    corporate: number,
+    supplierData: Partial<{
+      company: string;
+      phone: string;
+      email: string;
+      service: string;
+    }>,
+  ): Promise<ApiResponse<Supplier>> => {
+    const response = await http.put(`/suppliers/${corporate}`, supplierData);
+    return response.data as ApiResponse<Supplier>;
+  },
+
+  // Eliminar supplier (solo admin)
+  deleteSupplier: async (corporate: number): Promise<ApiResponse> => {
+    const response = await http.delete(`/suppliers/${corporate}`);
+    return response.data as ApiResponse;
   },
 };
 

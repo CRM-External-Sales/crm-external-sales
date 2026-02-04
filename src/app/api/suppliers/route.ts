@@ -141,22 +141,22 @@ export const GET = withAuth(
       const validatedQuery = SupplierQuerySchema.parse(queryParams);
       const { page, limit, company, service } = validatedQuery;
 
-      // Validar longitud mínima de filtros (mínimo 2 caracteres)
-      if (company && company.length < 2) {
+      // Validar longitud mínima de filtros (mínimo 1 carácter)
+      if (company && company.length < 1) {
         return NextResponse.json(
           {
             success: false,
-            error: "El filtro de nombre de empresa debe tener al menos 2 caracteres",
+            error: "El filtro de nombre de empresa debe tener al menos 1 carácter",
           },
           { status: 400 },
         );
       }
 
-      if (service && service.length < 2) {
+      if (service && service.length < 1) {
         return NextResponse.json(
           {
             success: false,
-            error: "El filtro de servicio debe tener al menos 2 caracteres",
+            error: "El filtro de servicio debe tener al menos 1 carácter",
           },
           { status: 400 },
         );

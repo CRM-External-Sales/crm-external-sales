@@ -261,6 +261,44 @@ export interface Supplier {
   created_at: string;
 }
 
+// Interfaces para Transfers
+export interface Transfer {
+  license_plate: number;
+  supplier_corporate: number;
+  availability: string;
+  make: string;
+  model: string;
+  category: string;
+  capacity: number;
+  type: string;
+  base_price: number;
+  sale_price: number;
+  supplier?: {
+    corporate: number;
+    company: string;
+    email: string;
+  };
+}
+
+// Interfaces para Transfers
+export interface Transfer {
+  license_plate: number;
+  supplier_corporate: number;
+  availability: string;
+  make: string;
+  model: string;
+  category: string;
+  capacity: number;
+  type: string;
+  base_price: number;
+  sale_price: number;
+  supplier?: {
+    corporate: number;
+    company: string;
+    email: string;
+  };
+}
+
 // Servicios de Tours
 export const tourService = {
   // Obtener todos los tours
@@ -428,6 +466,72 @@ export const supplierService = {
   // Eliminar supplier (solo admin)
   deleteSupplier: async (corporate: number): Promise<ApiResponse> => {
     const response = await http.delete(`/suppliers/${corporate}`);
+    return response.data as ApiResponse;
+  },
+};
+
+// Servicios de Transfers
+export const transferService = {
+  // Obtener todos los transfers (admin/agent)
+  getTransfers: async (params?: {
+    page?: number;
+    limit?: number;
+    make?: string;
+    category?: string;
+    availability?: string;
+    type?: string;
+  }): Promise<ApiResponse<Transfer[]>> => {
+    const response = await http.get("/transfers", { params });
+    return response.data as ApiResponse<Transfer[]>;
+  },
+
+  // Obtener transfer por placa (admin/agent)
+  getTransferByLicensePlate: async (
+    licensePlate: number,
+  ): Promise<ApiResponse<Transfer>> => {
+    const response = await http.get(`/transfers/${licensePlate}`);
+    return response.data as ApiResponse<Transfer>;
+  },
+
+  // Crear transfer (solo admin)
+  createTransfer: async (transferData: {
+    license_plate: number;
+    supplier_corporate: number;
+    availability: string;
+    make: string;
+    model: string;
+    category: string;
+    capacity: number;
+    type: string;
+    base_price: number;
+    sale_price: number;
+  }): Promise<ApiResponse<Transfer>> => {
+    const response = await http.post("/transfers", transferData);
+    return response.data as ApiResponse<Transfer>;
+  },
+
+  // Actualizar transfer (solo admin)
+  updateTransfer: async (
+    licensePlate: number,
+    transferData: Partial<{
+      availability: string;
+      make: string;
+      model: string;
+      category: string;
+      capacity: number;
+      type: string;
+      base_price: number;
+      sale_price: number;
+      supplier_corporate: number;
+    }>,
+  ): Promise<ApiResponse<Transfer>> => {
+    const response = await http.put(`/transfers/${licensePlate}`, transferData);
+    return response.data as ApiResponse<Transfer>;
+  },
+
+  // Eliminar transfer (solo admin)
+  deleteTransfer: async (licensePlate: number): Promise<ApiResponse> => {
+    const response = await http.delete(`/transfers/${licensePlate}`);
     return response.data as ApiResponse;
   },
 };

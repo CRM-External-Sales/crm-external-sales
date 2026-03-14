@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
-import { AxiosError } from "axios";
+
 import { CheckCircle2 } from "lucide-react";
 
  interface SupplierFormState {

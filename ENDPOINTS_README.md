@@ -715,3 +715,146 @@ const addSchedules = await fetch('/api/tours/1/schedules', {
 4. Integrar con tu frontend usando los hooks proporcionados
 
 ¿Necesitas ayuda con algún aspecto específico de la implementación?
+
+---
+
+## 🖥️ Frontend — Vistas y Gestión de Formularios
+
+Esta sección documenta los componentes de interfaz de usuario implementados para la gestión de tours, incluyendo la estrategia de validación y manejo de formularios.
+
+### 📁 Estructura de Archivos
+
+```
+src/
+├── app/
+│   └── tours/
+│       ├── page.tsx           → Ruta: /tours         (Listado de tours)
+│       └── crear/
+│           └── page.tsx       → Ruta: /tours/crear   (Crear tour)
+├── features/
+│   └── tours/
+│       ├── Create.tsx         → Formulario de creación
+│       ├── View.tsx           → Tabla de listado con filtros y acciones
+│       └── Edit.tsx           → Formulario de edición (All-in-One)
+└── hooks/
+    └── useTours.ts            → Hook para fetching y paginación de tours
+```
+
+---
+
+### 📋 Vista de Listado (`View.tsx`)
+
+Muestra todos los tours en una tabla paginada. Permite buscar, filtrar, editar y eliminar.
+
+**Características:**
+- **Búsqueda debounced** por nombre del tour
+- **Filtros** por Tipo, Dificultad y Disponibilidad (selectores desplegables)
+- **Paginación** controlada por el hook `useTours`
+- **Badge de disponibilidad** — verde para "Disponible", gris para "No disponible"
+- **Menú de acciones** (`...`) por fila: acciones de **Editar** y **Eliminar**
+- **Diálogo de confirmación** antes de eliminar un tour
+- Al seleccionar "Editar", renderiza el componente `EditTourView` en lugar de la tabla
+
+**Hook asociado — `useTours`:**
+
+```typescript
+import { useTours } from "@/hooks/useTours";
+
+const { tours, loading, error, pagination, refetch } = useTours({
+  page: 1,
+  limit: 5,
+  name: "Catarata",       // búsqueda por nombre
+  type: "Aventura",       // filtro por tipo
+  difficulty: "Baja",     // filtro por dificultad
+  availability: "Disponible", // filtro por disponibilidad
+});
+```
+
+---
+
+### 📝 Formularios — Zod + React Hook Form
+
+Tanto el formulario de **Crear** (`Create.tsx`) como el de **Editar** (`Edit.tsx`) utilizan la misma estrategia de validación y manejo de estado.
+
+#### ¿Qué es Zod?
+
+[Zod](https://zod.dev) es una librería de validación de esquemas con inferencia de tipos TypeScript. Permite definir la forma y restricciones de los datos **una sola vez** y reutilizarla tanto para validación en tiempo de ejecución como para tipado estático.
+
+```typescript
+import * as z from "zod";
+
+const tourFormSchema = z.object({
+  name: z.string().min(1, "El nombre es obligatorio"),
+  base_price: z.coerce.number().positive("El precio debe ser mayor a 0"),
+  spots: z.coerce.number().int().positive("Debe ser un entero positivo"),
+  type: z.string().min(1, "Seleccione un tipo de tour"),
+  // ... resto de campos
+});
+
+// TypeScript infiere el tipo automáticamente:
+type TourFormValues = z.infer<typeof tourFormSchema>;
+```
+
+**Ventajas de usar Zod:**
+- Los mensajes de error se definen junto a las reglas, en español
+- `z.coerce` convierte automáticamente los valores de inputs HTML (siempre `string`) al tipo correcto (ej. `number`)
+- El esquema es la única fuente de verdad — sin duplicar validaciones entre frontend y backend
+
+#### ¿Qué es React Hook Form?
+
+[React Hook Form](https://react-hook-form.com) es una librería para gestionar el estado de formularios en React. A diferencia de manejar cada campo con `useState`, RHF registra los inputs con una referencia y solo re-renderiza cuando es necesario.
+
+```typescript
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const {
+  register,       // conecta un input al formulario
+  handleSubmit,   // wrappea el onSubmit y valida antes de llamarlo
+  watch,          // observa el valor actual de un campo
+  reset,          // resetea todos los campos a defaultValues
+  formState: { errors, isSubmitting }, // estado del formulario
+} = useForm({
+  resolver: zodResolver(tourFormSchema), // integra Zod como validador
+  defaultValues: {
+    name: "",
+    base_price: "" as unknown as number,
+    // ...
+  },
+});
+```
+
+**Integración con los inputs:**
+
+```tsx
+{/* Campo de texto */}
+<Input id="name" {...register("name")} />
+{errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+
+{/* Select con color tenue en placeholder */}
+<select
+  {...register("type")}
+  className={!watch("type") ? "text-muted-foreground" : "text-foreground"}
+>
+  <option value="">Seleccionar tipo</option>
+  <option value="Aventura">Aventura</option>
+</select>
+```
+
+---
+
+### ✏️ Vista de Edición (`Edit.tsx`) — All-in-One
+
+El formulario de edición integra en una sola pantalla:
+
+| Sección | Comportamiento |
+|---|---|
+| **Datos base** | React Hook Form + Zod, precargados con los valores actuales del tour |
+| **Horarios** | Carga horarios existentes via `GET /api/tours/:id/schedules`. Agregar/eliminar en tiempo real via API |
+| **Imágenes** | Carga imágenes existentes via `GET /api/tours/:id/images`. Eliminar existentes en tiempo real. Nuevas imágenes se suben al hacer clic en "Guardar Cambios" via `POST /api/tours/:id/images` (multipart) |
+
+**Flujo de guardado:**
+1. Valida el formulario con Zod
+2. Llama a `PUT /api/tours/:id` con los datos base
+3. Si hay imágenes pendientes, las sube con `POST /api/tours/:id/images`
+4. Muestra alerta de éxito y vuelve al listado

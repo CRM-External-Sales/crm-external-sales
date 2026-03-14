@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
-import { AxiosError } from "axios";
+
 import { CheckCircle2 } from "lucide-react";
 
 interface SupplierFormState {

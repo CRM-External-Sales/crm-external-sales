@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { transferService, supplierService, type ApiResponse, type Transfer, type Supplier } from "@/lib/api";
-import { AxiosError } from "axios";
+
 import { CheckCircle2 } from "lucide-react";
 
 interface TransferFormState {
@@ -149,7 +149,7 @@ export const CreateTransferView = () => {
       } else {
         setError(response.error || "No se pudo crear el transfer.");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof AxiosError && err.response?.data) {
         const data = err.response.data as ApiResponse;
         setError(

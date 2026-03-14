@@ -30,7 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MoreHorizontal, CheckCircle2 } from "lucide-react";
-import { AxiosError } from "axios";
+
 import { EditTransferView } from "./Edit";
 
 export const View = () => {

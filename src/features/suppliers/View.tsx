@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
+import * as z from "zod";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { supplierService, type Supplier, type ApiResponse } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -29,14 +33,38 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SupplierQuerySchema } from "@/app/schemas/supplier.schema";
 import { MoreHorizontal, CheckCircle2 } from "lucide-react";
 
 import { EditSupplierView } from "./Edit";
 
+const supplierViewFiltersSchema = SupplierQuerySchema.pick({
+  company: true,
+  service: true,
+}).extend({
+  company: z.string().default(""),
+  service: z.union([z.literal(""), z.literal("Tour"), z.literal("Transfer")]).default(""),
+});
+
+type SupplierViewFilters = z.infer<typeof supplierViewFiltersSchema>;
+type SupplierViewFiltersInput = z.input<typeof supplierViewFiltersSchema>;
+
 export const View = () => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    register,
+    watch,
+    setValue,
+  } = useForm<SupplierViewFiltersInput, unknown, SupplierViewFilters>({
+    resolver: zodResolver(supplierViewFiltersSchema),
+    defaultValues: {
+      company: "",
+      service: "",
+    },
+  });
+
+  const searchTerm = watch("company") ?? "";
+  const serviceFilter = watch("service") ?? "";
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [serviceFilter, setServiceFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [singleSupplier, setSingleSupplier] = useState<Supplier | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -73,9 +101,8 @@ export const View = () => {
 
   // Usar el hook para búsqueda normal (por nombre/company)
   // Solo enviar búsqueda si tiene al menos 1 carácter
-  const shouldSearchByCompany = 
-    debouncedSearchTerm && 
-    !isNumericSearch && 
+  const shouldSearchByCompany =
+    !isNumericSearch &&
     debouncedSearchTerm.trim().length >= 1;
 
   const {
@@ -326,7 +353,7 @@ export const View = () => {
             type="text"
             placeholder="Buscar por identificación o nombre..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            {...register("company")}
             className="w-full"
           />
         </div>
@@ -342,7 +369,7 @@ export const View = () => {
                 aria-checked={serviceFilter === "Tour"}
                 onClick={() => {
                   // Si ya está seleccionado, deseleccionar; si no, seleccionar
-                  setServiceFilter(serviceFilter === "Tour" ? "" : "Tour");
+                  setValue("service", serviceFilter === "Tour" ? "" : "Tour");
                   setCurrentPage(1);
                   setSingleSupplier(null);
                 }}
@@ -363,7 +390,7 @@ export const View = () => {
                 aria-checked={serviceFilter === "Transfer"}
                 onClick={() => {
                   // Si ya está seleccionado, deseleccionar; si no, seleccionar
-                  setServiceFilter(serviceFilter === "Transfer" ? "" : "Transfer");
+                  setValue("service", serviceFilter === "Transfer" ? "" : "Transfer");
                   setCurrentPage(1);
                   setSingleSupplier(null);
                 }}

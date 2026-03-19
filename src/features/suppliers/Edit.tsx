@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
+import * as z from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -14,16 +18,29 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
-
+import { UpdateSupplierSchema } from "@/app/schemas/supplier.schema";
 import { CheckCircle2 } from "lucide-react";
 
-interface SupplierFormState {
-  corporate: string;
-  company: string;
-  phone: string;
-  email: string;
-  service: string;
-}
+const editSupplierFormSchema = UpdateSupplierSchema.extend({
+  corporate: z.coerce.number().int().positive("La identificación debe ser un número positivo."),
+  company: z
+    .string()
+    .min(2, "El nombre de la compañía debe tener al menos 2 caracteres")
+    .max(200, "El nombre de la compañía no puede exceder 200 caracteres"),
+  phone: z
+    .string()
+    .min(7, "El teléfono debe tener al menos 7 caracteres")
+    .max(30, "El teléfono no puede exceder 30 caracteres"),
+  email: z.string().email("Debes proporcionar un email válido"),
+  service: z
+    .union([z.literal(""), z.literal("Tour"), z.literal("Transfer")])
+    .refine((value) => value !== "", {
+      message: "Seleccionar tipo de servicio",
+    }),
+});
+
+type EditSupplierFormValues = z.infer<typeof editSupplierFormSchema>;
+type EditSupplierFormInput = z.input<typeof editSupplierFormSchema>;
 
 interface EditSupplierViewProps {
   supplier: Supplier;
@@ -32,28 +49,29 @@ interface EditSupplierViewProps {
 }
 
 export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplierViewProps) => {
-  const [form, setForm] = useState<SupplierFormState>({
-    corporate: supplier.corporate.toString(),
-    company: supplier.company,
-    phone: supplier.phone,
-    email: supplier.email,
-    service: supplier.service,
-  });
-  const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const handleChange =
-    (field: keyof SupplierFormState) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      setForm((prev) => ({
-        ...prev,
-        [field]: event.target.value,
-      }));
-    };
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<EditSupplierFormInput, unknown, EditSupplierFormValues>({
+    resolver: zodResolver(editSupplierFormSchema),
+    defaultValues: {
+      corporate: supplier.corporate.toString(),
+      company: supplier.company,
+      phone: supplier.phone,
+      email: supplier.email,
+      service:
+        supplier.service === "Tour" || supplier.service === "Transfer"
+          ? supplier.service
+          : "",
+    },
+  });
 
   const handleDelete = () => {
     setDeleteError(null);
@@ -72,8 +90,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
     setDeleting(true);
 
     try {
-      const corporateNumber = parseInt(form.corporate, 10);
-      const response = await supplierService.deleteSupplier(corporateNumber);
+      const response = await supplierService.deleteSupplier(supplier.corporate);
 
       if (response.success) {
         setDeleteDialogOpen(false);
@@ -89,23 +106,19 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
         const data = err.response.data as ApiResponse & { details?: string };
         const status = err.response.status;
 
-        // Manejar específicamente el error 409 (Conflict - tiene dependencias)
         if (status === 409) {
           const errorMessage = data.error || "No se puede eliminar el proveedor porque tiene registros asociados.";
           const detailsMessage = data.details ? ` ${data.details}` : "";
           setDeleteError(errorMessage + detailsMessage);
         } else if (status === 403) {
-          // Sin permisos (solo admin)
           setDeleteError(
             data.error || "No tienes permisos para eliminar proveedores. Solo los administradores pueden realizar esta acción.",
           );
         } else if (status === 404) {
-          // Supplier no encontrado
           setDeleteError(
             data.error || "El proveedor no fue encontrado. Puede que ya haya sido eliminado.",
           );
         } else {
-          // Otros errores
           const errorMessage = data.error || data.message || "Ocurrió un error al eliminar el proveedor.";
           const detailsMessage = data.details ? ` ${data.details}` : "";
           setDeleteError(errorMessage + detailsMessage);
@@ -122,30 +135,21 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onSubmit = async (data: EditSupplierFormValues) => {
     setError(null);
     setSuccess(null);
 
-    const corporateNumber = parseInt(form.corporate, 10);
-    if (!form.corporate || Number.isNaN(corporateNumber) || corporateNumber <= 0) {
-      setError("La identificación debe ser un número positivo.");
+    if (data.service !== "Tour" && data.service !== "Transfer") {
+      setError("Seleccionar tipo de servicio");
       return;
     }
-
-    if (!form.company || !form.email || !form.phone || !form.service) {
-      setError("Todos los campos son obligatorios.");
-      return;
-    }
-
-    setSubmitting(true);
 
     try {
-      const response = await supplierService.updateSupplier(corporateNumber, {
-        company: form.company.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim(),
-        service: form.service.trim(),
+      const response = await supplierService.updateSupplier(data.corporate, {
+        company: data.company.trim(),
+        phone: data.phone.trim(),
+        email: data.email.trim(),
+        service: data.service,
       });
 
       if (response.success && response.data) {
@@ -163,7 +167,6 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
         const data = err.response.data as ApiResponse;
         const status = err.response.status;
 
-        // Manejar diferentes códigos de estado del backend
         switch (status) {
           case 400:
             setError(
@@ -190,7 +193,6 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
             );
             break;
           case 500:
-            // Error interno del servidor (500)
             setError(
               data.error ||
                 "Error interno del servidor. Por favor, intenta nuevamente más tarde.",
@@ -210,8 +212,6 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
             : "Ocurrió un error al actualizar el proveedor. Intenta nuevamente.",
         );
       }
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -236,7 +236,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Identificación */}
             <div className="space-y-2">
               <Label htmlFor="corporate" className="text-[#4A4A4A] font-semibold">
@@ -248,12 +248,11 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
                 min={1}
                 step={1}
                 placeholder="Ingrese la identificación del proveedor"
-                value={form.corporate}
-                onChange={handleChange("corporate")}
+                {...register("corporate")}
                 className="bg-white border border-gray-300 rounded-md [&::-webkit-inner-spin-button]:appearance-auto [&::-webkit-outer-spin-button]:appearance-auto [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
-                required
                 disabled
               />
+              {errors.corporate && <p className="text-red-500 text-xs font-medium">{errors.corporate.message}</p>}
             </div>
 
             {/* Nombre */}
@@ -263,10 +262,9 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
                 id="company"
                 type="text"
                 placeholder="Ingrese el nombre del proveedor"
-                value={form.company}
-                onChange={handleChange("company")}
-                required
+                {...register("company")}
               />
+              {errors.company && <p className="text-red-500 text-xs font-medium">{errors.company.message}</p>}
             </div>
 
             {/* Correo */}
@@ -276,10 +274,9 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
                 id="email"
                 type="email"
                 placeholder="Ingrese el correo electrónico"
-                value={form.email}
-                onChange={handleChange("email")}
-                required
+                {...register("email")}
               />
+              {errors.email && <p className="text-red-500 text-xs font-medium">{errors.email.message}</p>}
             </div>
 
             {/* Teléfono */}
@@ -289,10 +286,9 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
                 id="phone"
                 type="tel"
                 placeholder="Ingrese el número de teléfono"
-                value={form.phone}
-                onChange={handleChange("phone")}
-                required
+                {...register("phone")}
               />
+              {errors.phone && <p className="text-red-500 text-xs font-medium">{errors.phone.message}</p>}
             </div>
 
             {/* Servicio */}
@@ -300,17 +296,16 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
               <Label htmlFor="service" className="text-[#4A4A4A] font-semibold">Servicio</Label>
               <select
                 id="service"
-                value={form.service}
-                onChange={handleChange("service")}
+                {...register("service")}
                 className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                  form.service === "" ? "text-muted-foreground" : "text-foreground"
+                  !watch("service") ? "text-muted-foreground" : "text-foreground"
                 }`}
-                required
               >
                 <option value="">Seleccionar tipo de servicio</option>
                 <option value="Tour">Tour</option>
                 <option value="Transfer">Transfer</option>
               </select>
+              {errors.service && <p className="text-red-500 text-xs font-medium">{errors.service.message}</p>}
             </div>
 
             {/* Acciones */}
@@ -320,7 +315,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
                 variant="destructive"
                 onClick={handleDelete}
                 className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600"
-                disabled={submitting || deleting}
+                disabled={isSubmitting || deleting}
               >
                 {deleting ? "Eliminando..." : "Eliminar"}
               </Button>
@@ -330,16 +325,16 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
                   variant="outline"
                   onClick={onCancel}
                   className="bg-transparent border-2 border-[#313833] text-[#313833] hover:bg-transparent hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={submitting || deleting}
+                  disabled={isSubmitting || deleting}
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
                   className="bg-[#647a3a] text-white hover:bg-[#4f622d] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#647a3a]"
-                  disabled={submitting || deleting}
+                  disabled={isSubmitting || deleting}
                 >
-                  {submitting ? "Guardando..." : "Guardar"}
+                  {isSubmitting ? "Guardando..." : "Guardar"}
                 </Button>
               </div>
             </div>
@@ -354,7 +349,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
                 </DialogTitle>
                 <DialogDescription className="text-center text-[#4A4A4A] pt-2">
                   Estás a punto de eliminar el proveedor{" "}
-                  <strong className="text-[#1A1F1B]">{form.company}</strong> (Identificación: {form.corporate}).
+                  <strong className="text-[#1A1F1B]">{watch("company")}</strong> (Identificación: {String(watch("corporate") ?? supplier.corporate)}).
                   <br />
                   <br />
                   <span className="text-red-600 font-medium">
@@ -396,4 +391,3 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
     </div>
   );
 };
-

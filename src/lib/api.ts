@@ -280,25 +280,6 @@ export interface Transfer {
   };
 }
 
-// Interfaces para Transfers
-export interface Transfer {
-  license_plate: number;
-  supplier_corporate: number;
-  availability: string;
-  make: string;
-  model: string;
-  category: string;
-  capacity: number;
-  type: string;
-  base_price: number;
-  sale_price: number;
-  supplier?: {
-    corporate: number;
-    company: string;
-    email: string;
-  };
-}
-
 // Servicios de Tours
 export const tourService = {
   // Obtener todos los tours

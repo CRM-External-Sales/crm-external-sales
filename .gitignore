@@ -44,3 +44,13 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tests & Reports
+testsprite_tests/tmp/
+testsprite_tests/**/__pycache__/
+testsprite_tests/testsprite-mcp-test-report.html

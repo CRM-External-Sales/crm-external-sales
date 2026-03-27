@@ -2,7 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
-  /* config options here */
+  async redirects() {
+    return [
+      {
+        source: "/forgot-password",
+        destination: "/auth/forgot-password",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

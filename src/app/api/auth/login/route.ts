@@ -11,7 +11,7 @@ import { ZodError } from "zod";
 export const POST = withSecurity({
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutos
-    maxRequests: 20, // 20 intentos de login por ventana (más permisivo para desarrollo)
+    maxRequests: process.env.NODE_ENV === "production" ? 20 : 1000, // 1000 en desarrollo para suites de tests (TestSprite), 20 en producción
   },
   sanitizeInput: true,
 })(async (request: NextRequest) => {

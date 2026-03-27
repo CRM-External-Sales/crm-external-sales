@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import {
-  ForgotPasswordSchema,
-  ResetPasswordSchema,
-} from "@/app/schemas/user.schema";
+import { ForgotPasswordSchema } from "@/app/schemas/user.schema";
 
 // POST /api/auth/forgot-password - Solicitar restablecimiento de contraseña
 export async function POST(request: NextRequest) {
@@ -12,10 +9,11 @@ export async function POST(request: NextRequest) {
     const validatedData = ForgotPasswordSchema.parse(body);
 
     // Enviar email de restablecimiento
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(
       validatedData.email,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+        redirectTo: `${appUrl}/auth/reset-password`,
       },
     );
 

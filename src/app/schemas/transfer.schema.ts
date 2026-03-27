@@ -62,6 +62,112 @@ export const TransferQuerySchema = z.object({
   availability: z.string().optional(),
 });
 
+/** Enteros positivos desde inputs HTML (texto/número como string) */
+const zPositiveIntString = (requiredMsg: string, invalidMsg: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, requiredMsg)
+    .refine((s) => /^\d+$/.test(s), { message: invalidMsg })
+    .transform((s) => parseInt(s, 10))
+    .refine((n) => n > 0, { message: invalidMsg });
+
+/** Precio desde string (acepta decimales) */
+const zPositivePriceString = (requiredMsg: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, requiredMsg)
+    .transform((s) => parseFloat(s))
+    .refine((n) => !Number.isNaN(n) && n > 0, {
+      message: "Debe ser un número positivo",
+    });
+
+/**
+ * Misma forma que los inputs del cliente; al validar produce el shape de CreateTransferSchema.
+ */
+export const CreateTransferFormSchema = z.object({
+  license_plate: zPositiveIntString(
+    "La placa es requerida",
+    "La placa debe ser un número entero positivo",
+  ),
+  make: z.string().trim().min(1, "La marca es requerida"),
+  model: z.string().trim().min(1, "El modelo es requerido"),
+  category: z.string().trim().min(1, "La categoría es requerida"),
+  capacity: zPositiveIntString(
+    "La capacidad es requerida",
+    "La capacidad debe ser un número entero positivo",
+  ),
+  supplier_corporate: zPositiveIntString(
+    "Debe seleccionar un proveedor",
+    "Debe seleccionar un proveedor válido",
+  ),
+  availability: z.string().trim().min(1, "La disponibilidad es requerida"),
+  type: z.string().trim().min(1, "El tipo es requerido"),
+  base_price: zPositivePriceString("El precio base es requerido"),
+  sale_price: zPositivePriceString("El precio de venta es requerido"),
+});
+
+export type CreateTransferFormValues = z.input<typeof CreateTransferFormSchema>;
+export type CreateTransferFormOutput = z.output<typeof CreateTransferFormSchema>;
+
+export const createTransferFormEmptyValues = (): CreateTransferFormValues => ({
+  license_plate: "",
+  make: "",
+  model: "",
+  category: "",
+  capacity: "",
+  supplier_corporate: "",
+  availability: "",
+  type: "",
+  base_price: "",
+  sale_price: "",
+});
+
+export const UpdateTransferFormSchema = CreateTransferFormSchema.omit({
+  license_plate: true,
+});
+
+export type UpdateTransferFormValues = z.input<typeof UpdateTransferFormSchema>;
+export type UpdateTransferFormOutput = z.output<typeof UpdateTransferFormSchema>;
+
+const TransferAvailabilityFilterSchema = z.enum([
+  "available",
+  "maintenance",
+  "unavailable",
+]);
+
+const TransferTypeFilterSchema = z.enum(["Interno", "Externo"]);
+
+const zSearchTermSchema = z
+  .string()
+  .trim()
+  .max(100, "La búsqueda no puede exceder 100 caracteres")
+  .refine((value) => {
+    if (!value) return true;
+    if (!/^\d+$/.test(value)) return true;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0;
+  }, "La placa debe ser un número entero positivo y válido");
+
+export const TransferViewFiltersSchema = z.object({
+  searchTerm: zSearchTermSchema,
+  makeFilter: z.string().trim().max(100, "La marca no puede exceder 100 caracteres"),
+  categoryFilter: z.string().trim().max(100, "La categoría no puede exceder 100 caracteres"),
+  availabilityFilter: z.union([z.literal(""), TransferAvailabilityFilterSchema]),
+  typeFilter: z.union([z.literal(""), TransferTypeFilterSchema]),
+});
+
+export type TransferViewFiltersValues = z.input<typeof TransferViewFiltersSchema>;
+
+export const transferViewFiltersDefaultValues = (): TransferViewFiltersValues => ({
+  searchTerm: "",
+  makeFilter: "",
+  categoryFilter: "",
+  availabilityFilter: "",
+  typeFilter: "",
+});
+
 // Tipos TypeScript
 export type CreateTransferInput = z.infer<typeof CreateTransferSchema>;
 export type UpdateTransferInput = z.infer<typeof UpdateTransferSchema>;

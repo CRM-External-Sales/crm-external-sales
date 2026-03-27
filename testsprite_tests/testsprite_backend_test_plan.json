@@ -1,0 +1,67 @@
+[
+  {
+    "id": "TC001",
+    "title": "GET /reportes successful request with valid admin token and parameters",
+    "description": "Test GET /reportes with valid Supabase admin token and valid query parameters (tipo_reporte, fecha_inicio, fecha_fin, granularidad_temporal) to receive 200 response with correct structure containing KPIs, chart data, and reservations array. IMPORTANT: Login API returns { success, data: { session: { access_token } } }. Extract token from data.session.access_token. Use tipo_reporte=reservas_tiempo. Reports response has data.kpis, data.datosGrafico, data.totalReservas."
+  },
+  {
+    "id": "TC002",
+    "title": "GET /reportes authentication and validation errors",
+    "description": "Test GET /reportes without Supabase token to receive 401. Test with invalid/expired token to receive 401. Test with missing required query parameters (fecha_inicio, fecha_fin) or invalid date formats to receive 400 validation error. Login returns { success, data: { session: { access_token } } }. Extract token from data.session.access_token."
+  },
+  {
+    "id": "TC003",
+    "title": "POST /reserva successful request with valid data",
+    "description": "Test POST /reserva with valid token and valid body. CRITICAL: Obtain tour_id from GET /api/tours first. API returns data as array (not dict with items) - use: data_field = response.get('data',[]); tours_list = data_field if isinstance(data_field,list) else data_field.get('items',[]). Tour id is in first_tour.get('id_tour') or first_tour.get('id'). Date MUST be ISO 8601 datetime e.g. 2026-04-20T00:00:00.000Z (not YYYY-MM-DD only). Accept 200 or 201 for POST. Login: token from data.session.access_token."
+  },
+  {
+    "id": "TC004",
+    "title": "POST /reserva authentication validation and edge cases",
+    "description": "Test POST /reserva without token to receive 401. Test with invalid/expired token to receive 401. Test with missing required fields (tour_id, date, time) or invalid data types to receive 400 validation error. Test with nonexistent tour_id to receive 404 or 400 error."
+  },
+  {
+    "id": "TC005",
+    "title": "GET /reserva successful request and authentication",
+    "description": "Test GET /reserva with valid Supabase agent or admin token to receive 200 response with reservations array (admin sees all, agent sees only own). Test without token to receive 401. Test with invalid/expired token to receive 401."
+  },
+  {
+    "id": "TC006",
+    "title": "PUT /reserva successful request and edge cases",
+    "description": "Test PUT /reserva/:id with valid admin token. CRITICAL: To create reservation first, get tour_id from GET /api/tours (data is array; use id_tour or id from first item). Date must be ISO 8601 e.g. 2026-12-01T00:00:00.000Z. Assert create_resp.status_code in (200, 201). Then PUT update and assert 200. Test without token 401, nonexistent id 404."
+  },
+  {
+    "id": "TC007",
+    "title": "PUT /reserva validation errors",
+    "description": "Test PUT /reserva/:id validation. Get tour_id from GET /api/tours (data as array, id_tour or id). Date ISO 8601. Assert reservation create status in (200, 201). For PUT with empty body accept 200 or 400 (API may allow no-op). For invalid types expect 400. Cleanup DELETE may return 405 (not implemented); accept 200, 204, 404, 405."
+  },
+  {
+    "id": "TC008",
+    "title": "GET /proveedor successful request and authentication",
+    "description": "Test GET /proveedor with valid Supabase agent or admin token to receive 200 response with suppliers array. Test without token to receive 401. Test with invalid/expired token to receive 401."
+  },
+  {
+    "id": "TC009",
+    "title": "POST /proveedor successful request with valid data",
+    "description": "Test POST /proveedor with valid admin token. Use unique corporate (e.g. int(uuid.uuid4().int % 10**12) + 10**11) and unique email to avoid 409. Assert response.status_code in (200, 201) - API returns 201 Created."
+  },
+  {
+    "id": "TC010",
+    "title": "POST /proveedor authentication validation and duplicate",
+    "description": "Test POST /proveedor 401 without token, 401 invalid token, 400 missing/invalid fields. For duplicate test use unique corporate and email per run (uuid-based) so first create succeeds; second create with same corporate must return 400 or 409."
+  },
+  {
+    "id": "TC011",
+    "title": "PUT /proveedor successful request and edge cases",
+    "description": "Test PUT /proveedor/:corporate. Create supplier first with unique corporate (uuid-based) and unique email/phone. Retry create on 409 up to 5 times with new corporate. Then PUT update 200, no token 401, nonexistent 404."
+  },
+  {
+    "id": "TC012",
+    "title": "PUT /proveedor validation errors",
+    "description": "Test PUT /proveedor/:corporate validation. Create supplier with unique corporate and email (uuid); retry on 409. Test empty/invalid payload 400. For malformed JSON body accept 400 or 500 (API may return 500)."
+  },
+  {
+    "id": "TC013",
+    "title": "DELETE /proveedor successful request and edge cases",
+    "description": "Test DELETE /proveedor/:corporate. Create suppliers with create_supplier(token) returning the corporate id used (retry on 409 with new corporate). Test DELETE 200, second DELETE 404, no token 401. For supplier with associated transfer, expect 400 or 409 (not only 400)."
+  }
+]

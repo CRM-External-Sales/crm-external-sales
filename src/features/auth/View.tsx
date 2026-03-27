@@ -104,7 +104,7 @@ export const View = () => {
                   Contraseña <span className="text-destructive">*</span>
                 </Label>
                 <Link
-                  href="/forgot-password"
+                  href="/auth/forgot-password"
                   className="text-xs text-primary underline-offset-2 hover:underline"
                 >
                   ¿Olvidaste tu contraseña?

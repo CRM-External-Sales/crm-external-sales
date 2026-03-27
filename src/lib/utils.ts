@@ -15,6 +15,15 @@ export function serializeForJSON(obj: any): any {
     return Number(obj);
   }
   
+  // Manejar Decimal de Prisma
+  if (obj && typeof obj === "object" && typeof (obj as any).toNumber === "function") {
+    try {
+      return (obj as any).toNumber();
+    } catch {
+      // continuar si falla
+    }
+  }
+  
   if (obj instanceof Date) {
     return obj.toISOString();
   }

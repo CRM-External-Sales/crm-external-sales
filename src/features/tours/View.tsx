@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MoreHorizontal, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { EditTourView } from "./Edit";
 
@@ -112,6 +113,7 @@ export const View = () => {
         setDeleteDialogOpen(false);
         setTourToDelete(null);
         setDeleteSuccess("Tour eliminado correctamente.");
+        toast.success("Tour eliminado correctamente.");
         await refetch();
         setTimeout(() => setDeleteSuccess(null), 3000);
       } else {

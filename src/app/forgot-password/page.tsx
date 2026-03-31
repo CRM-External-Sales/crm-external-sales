@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,15 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +36,9 @@ export default function ForgotPasswordPage() {
       setSent(true);
       setEmail("");
       setIsRedirecting(true);
-      setTimeout(() => {
+      redirectTimeoutRef.current = setTimeout(() => {
         router.push("/login");
-      }, 2000);
+      }, 3000);
     } else {
       setError(res.error || "No se pudo enviar el correo");
     }
@@ -67,7 +76,7 @@ export default function ForgotPasswordPage() {
 
           {sent ? (
             <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 text-center">
-              Si tu cuenta existe, recibirás un correo en breve.
+              Si tu cuenta existe, recibirás un correo en breve. Te redirigimos al login en unos segundos.
             </div>
           ) : null}
 

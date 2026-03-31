@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { AxiosError } from "axios";
 
 import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 const selectBaseClass =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
@@ -126,6 +127,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
       if (response.success) {
         setDeleteDialogOpen(false);
         setSuccess("Transfer eliminado correctamente.");
+        toast.success("Transfer eliminado correctamente.");
         setTimeout(() => {
           onSuccess();
         }, 1500);
@@ -186,7 +188,9 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
       if (response.success && response.data) {
         const updated: Transfer = response.data;
-        setSuccess(`Transfer con placa ${updated.license_plate} actualizado correctamente.`);
+        const message = `Transfer con placa ${updated.license_plate} actualizado correctamente.`;
+        setSuccess(message);
+        toast.success(message);
         setTimeout(() => {
           onSuccess();
         }, 1500);
@@ -241,7 +245,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
               <div className="space-y-5">
                 {/* Placa de transfer */}
                 <div className="space-y-2">
-                  <Label htmlFor="license_plate" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="license_plate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Placa de transfer
                   </Label>
                   <Input
@@ -258,7 +262,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Marca */}
                 <div className="space-y-2">
-                  <Label htmlFor="make" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="make" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Marca
                   </Label>
                   <Input
@@ -275,7 +279,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Modelo */}
                 <div className="space-y-2">
-                  <Label htmlFor="model" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="model" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Modelo
                   </Label>
                   <Input
@@ -292,7 +296,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Categoría */}
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="category" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Categoría
                   </Label>
                   <Input
@@ -309,7 +313,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Capacidad */}
                 <div className="space-y-2">
-                  <Label htmlFor="capacity" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="capacity" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Capacidad
                   </Label>
                   <Input
@@ -334,7 +338,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
               <div className="space-y-5">
                 {/* Proveedor */}
                 <div className="space-y-2">
-                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Proveedor
                   </Label>
                   <select
@@ -365,7 +369,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Disponibilidad */}
                 <div className="space-y-2">
-                  <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Disponibilidad
                   </Label>
                   <select
@@ -389,7 +393,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Tipo */}
                 <div className="space-y-2">
-                  <Label htmlFor="type" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="type" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Tipo
                   </Label>
                   <select
@@ -412,7 +416,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Precio base */}
                 <div className="space-y-2">
-                  <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Precio base
                   </Label>
                   <Input
@@ -434,7 +438,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
                 {/* Precio venta */}
                 <div className="space-y-2">
-                  <Label htmlFor="sale_price" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="sale_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Precio venta
                   </Label>
                   <Input

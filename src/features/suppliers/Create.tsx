@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
 import { CreateSupplierSchema } from "@/app/schemas/supplier.schema";
 import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 const createSupplierFormSchema = CreateSupplierSchema.extend({
   corporate: z.coerce.number().int().positive("El campo corporate debe ser un número positivo"),
@@ -76,7 +77,9 @@ export const CreateSupplierView = () => {
 
       if (response.success && response.data) {
         const created: Supplier = response.data;
-        setSuccess(`Proveedor ${created.company} creado correctamente.`);
+        const message = `Proveedor ${created.company} creado correctamente.`;
+        setSuccess(message);
+        toast.success(message);
         setError(null);
         reset({
           corporate: data.corporate,
@@ -130,7 +133,7 @@ export const CreateSupplierView = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Identificación */}
             <div className="space-y-2">
-              <Label htmlFor="corporate" className="text-[#4A4A4A] font-semibold">
+              <Label htmlFor="corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                 Identificación
               </Label>
               <Input
@@ -149,7 +152,7 @@ export const CreateSupplierView = () => {
 
             {/* Nombre */}
             <div className="space-y-2">
-              <Label htmlFor="company" className="text-[#4A4A4A] font-semibold">
+              <Label htmlFor="company" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                 Nombre
               </Label>
               <Input
@@ -165,7 +168,7 @@ export const CreateSupplierView = () => {
 
             {/* Correo */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#4A4A4A] font-semibold">
+              <Label htmlFor="email" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                 Correo
               </Label>
               <Input
@@ -181,7 +184,7 @@ export const CreateSupplierView = () => {
 
             {/* Teléfono */}
             <div className="space-y-2">
-              <Label htmlFor="phone" className="text-[#4A4A4A] font-semibold">
+              <Label htmlFor="phone" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                 Teléfono
               </Label>
               <Input
@@ -197,7 +200,7 @@ export const CreateSupplierView = () => {
 
             {/* Servicio */}
             <div className="space-y-2">
-              <Label htmlFor="service" className="text-[#4A4A4A] font-semibold">
+              <Label htmlFor="service" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                 Servicio
               </Label>
               <select

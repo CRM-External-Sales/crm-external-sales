@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
 
 const ForgotPasswordFormSchema = z.object({
   email: z
@@ -21,8 +22,24 @@ type ForgotPasswordFormValues = z.infer<typeof ForgotPasswordFormSchema>;
 
 export const ForgotPasswordView = () => {
   const { forgotPassword, loading } = useAuth();
+  const router = useRouter();
   const [sent, setSent] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const redirectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+      if (redirectIntervalRef.current) {
+        clearInterval(redirectIntervalRef.current);
+      }
+    };
+  }, []);
 
   const {
     register,
@@ -34,10 +51,25 @@ export const ForgotPasswordView = () => {
   });
 
   const onSubmit = async (values: ForgotPasswordFormValues) => {
+    if (isRedirecting) return;
     setServerError(null);
     setSent(false);
     const res = await forgotPassword(values.email);
-    if (res.success) setSent(true);
+    if (res.success) {
+      setSent(true);
+      setIsRedirecting(true);
+      setRedirectCountdown(3);
+      redirectIntervalRef.current = setInterval(() => {
+        setRedirectCountdown((prev) => (prev > 1 ? prev - 1 : prev));
+      }, 1000);
+      redirectTimeoutRef.current = setTimeout(() => {
+        if (redirectIntervalRef.current) {
+          clearInterval(redirectIntervalRef.current);
+          redirectIntervalRef.current = null;
+        }
+        router.push("/login");
+      }, 3000);
+    }
     else setServerError(res.error || "No se pudo enviar el correo");
   };
 
@@ -86,16 +118,20 @@ export const ForgotPasswordView = () => {
           ) : null}
           {sent ? (
             <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              Correo enviado si la cuenta existe.
+              Correo enviado si la cuenta existe. Te redirigimos al login en unos segundos.
             </div>
           ) : null}
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || isRedirecting}
             className="w-full bg-[#647a3a] text-white hover:bg-[#4f622d]"
           >
-            {loading ? "Enviando..." : "Enviar enlace de recuperación"}
+            {isRedirecting
+              ? `Redirigiendo en ${redirectCountdown}s...`
+              : loading
+                ? "Enviando..."
+                : "Enviar enlace de recuperación"}
           </Button>
         </form>
       </div>

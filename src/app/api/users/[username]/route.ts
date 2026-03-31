@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import {
   withAuth,
   withAdminAuth,
@@ -161,10 +161,13 @@ export async function PUT(
         }
       }
 
+      const dbData = { ...sanitizedData };
+      delete dbData.password;
+
       const updatedUser = await prisma.app_user.update({
         where: { username: targetUsername },
         data: {
-          ...sanitizedData,
+          ...dbData,
           updated_at: new Date(),
         },
         select: {
@@ -178,12 +181,29 @@ export async function PUT(
         },
       });
 
+      // Si se proporcionó una contraseña, actualizarla en Supabase Auth
+      if (sanitizedData.password) {
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+          updatedUser.id,
+          { password: sanitizedData.password }
+        );
+
+        if (authError) {
+          console.error("Error actualizando contraseña en Supabase:", authError);
+          return NextResponse.json(
+            { success: false, error: "Usuario actualizado, pero falló el cambio de contraseña: " + authError.message },
+            { status: 500 }
+          );
+        }
+      }
+
       // Log de auditoría
       console.log(`Usuario actualizado por ${user.username}:`, {
         targetUser: targetUsername,
         updatedFields: Object.keys(sanitizedData).filter(
-          (key) => key !== "updated_at",
+          (key) => key !== "updated_at" && key !== "password",
         ),
+        passwordChanged: !!sanitizedData.password,
         timestamp: new Date().toISOString(),
       });
 
@@ -267,19 +287,32 @@ export async function DELETE(
         );
       }
 
-      // Eliminar usuario de la base de datos (mantener en Supabase Auth para auditorías)
-      await prisma.app_user.delete({
-        where: { username: targetUsername },
-      });
+      // Eliminar usuario de la base de datos PRIMERO
+      try {
+        await prisma.app_user.delete({
+          where: { username: targetUsername },
+        });
+      } catch (err: any) {
+        // P2025 significa que el registro ya no existe, manejarlo por si fue un borrado en cascada u otra concurrencia
+        if (err.code !== 'P2025') {
+          throw err;
+        }
+      }
 
-      console.log(
-        `Usuario ${targetUsername} eliminado de la aplicación (mantenido en Auth para auditorías)`,
+      // LUEGO Eliminar usuario en Supabase Auth
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
+        existingUser.id
       );
+
+      if (authError) {
+        console.error("Error eliminando usuario en Supabase Auth:", authError);
+      }
+
+      console.log(`Usuario ${targetUsername} eliminado de la aplicación y de Supabase Auth`);
 
       return NextResponse.json({
         success: true,
-        message:
-          "Usuario eliminado de la aplicación (mantenido en sistema de autenticación para auditorías)",
+        message: "Usuario eliminado correctamente",
       });
     } catch (error) {
       console.error("Error eliminando usuario:", error);

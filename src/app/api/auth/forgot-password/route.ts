@@ -13,13 +13,11 @@ export async function POST(request: NextRequest) {
 
     // Enviar email de restablecimiento
     const { error } = await supabase.auth.resetPasswordForEmail(
-      validatedData.email,
-      {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
-      },
+      validatedData.email
     );
 
     if (error) {
+      console.error("Supabase Auth Error (forgot-password):", error);
       return NextResponse.json(
         {
           success: false,

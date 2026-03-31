@@ -134,6 +134,7 @@ export const userService = {
       email: string;
       phone: string;
       role: "admin" | "agent" | "customer";
+      password?: string;
     }>,
   ): Promise<ApiResponse<User>> => {
     const response = await http.put(`/users/${id}`, userData);

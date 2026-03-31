@@ -18,7 +18,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
+<<<<<<< Updated upstream
 import { UpdateSupplierSchema } from "@/app/schemas/supplier.schema";
+=======
+import { AxiosError } from "axios";
+
+>>>>>>> Stashed changes
 import { CheckCircle2 } from "lucide-react";
 
 const editSupplierFormSchema = UpdateSupplierSchema.extend({

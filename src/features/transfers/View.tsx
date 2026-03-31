@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTransfers } from "@/hooks/useTransfers";
 import { transferService, type Transfer, type ApiResponse } from "@/lib/api";
+import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

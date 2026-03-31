@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { transferService, supplierService, type ApiResponse, type Transfer, type Supplier } from "@/lib/api";
+import { AxiosError } from "axios";
 
 import { CheckCircle2 } from "lucide-react";
 

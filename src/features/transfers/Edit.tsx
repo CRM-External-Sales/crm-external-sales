@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { transferService, supplierService, type ApiResponse, type Transfer, type Supplier } from "@/lib/api";
+import { AxiosError } from "axios";
 
 import { CheckCircle2 } from "lucide-react";
 

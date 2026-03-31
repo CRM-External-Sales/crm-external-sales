@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth, useAuthForm } from "@/hooks/useAuth";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
+import { supabaseClient } from "@/lib/supabase-client";
+import { useEffect } from "react";
 
 export const View = () => {
   const router = useRouter();
@@ -15,6 +17,19 @@ export const View = () => {
   const { formData, formErrors, updateField, validateForm } = useAuthForm();
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event, session) => {
+      // Si el evento es recuperación de contraseña, lo detectamos acá y lo redirigimos a donde corresponde
+      if (event === "PASSWORD_RECOVERY") {
+        router.push("/update-password");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

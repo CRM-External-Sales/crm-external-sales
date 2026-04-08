@@ -16,7 +16,9 @@ import {
 import { transferService, supplierService, type ApiResponse, type Transfer, type Supplier } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AxiosError } from "axios";
+
 import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 const selectBaseClass =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
@@ -87,7 +89,9 @@ export const CreateTransferView = () => {
 
       if (response.success && response.data) {
         const created: Transfer = response.data;
-        setSuccess(`Transfer con placa ${created.license_plate} creado correctamente.`);
+        const message = `Transfer con placa ${created.license_plate} creado correctamente.`;
+        setSuccess(message);
+        toast.success(message);
         reset({
           ...createTransferFormEmptyValues(),
           license_plate: String(created.license_plate),
@@ -95,7 +99,7 @@ export const CreateTransferView = () => {
       } else {
         setServerError(response.error || "No se pudo crear el transfer.");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof AxiosError && err.response?.data) {
         const data = err.response.data as ApiResponse & { message?: string; fieldErrors?: Record<string, string> };
         setServerError(
@@ -147,7 +151,7 @@ export const CreateTransferView = () => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="license_plate" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="license_plate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Placa de transfer
                   </Label>
                   <Input
@@ -168,7 +172,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="make" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="make" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Marca
                   </Label>
                   <Input
@@ -184,7 +188,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="model" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="model" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Modelo
                   </Label>
                   <Input
@@ -200,7 +204,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="category" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Categoría
                   </Label>
                   <Input
@@ -216,7 +220,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="capacity" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="capacity" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Capacidad
                   </Label>
                   <Input
@@ -239,7 +243,7 @@ export const CreateTransferView = () => {
 
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Proveedor
                   </Label>
                   <select
@@ -269,7 +273,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Disponibilidad
                   </Label>
                   <select
@@ -292,7 +296,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="type" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="type" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Tipo
                   </Label>
                   <select
@@ -314,7 +318,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Precio base
                   </Label>
                   <Input
@@ -335,7 +339,7 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sale_price" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="sale_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Precio venta
                   </Label>
                   <Input

@@ -134,6 +134,7 @@ export const userService = {
       email: string;
       phone: string;
       role: "admin" | "agent" | "customer";
+      password?: string;
     }>,
   ): Promise<ApiResponse<User>> => {
     const response = await http.put(`/users/${id}`, userData);
@@ -221,12 +222,9 @@ export interface Tour {
   id_tour: string;
   name: string;
   description: string;
-  photo?: string;
   type: string;
   availability: string;
   base_price: number;
-  day: string;
-  time: string;
   spots: number;
   requirements: string;
   duration: string;
@@ -249,6 +247,13 @@ export interface TourImage {
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface TourSchedule {
+  id: string;
+  tour_id: string;
+  weekday: string;
+  start_time: string; // HH:MM format as returned by API
 }
 
 // Interfaces para Suppliers
@@ -287,6 +292,7 @@ export const tourService = {
     page?: number;
     limit?: number;
     type?: string;
+    difficulty?: string;
     name?: string;
     availability?: string;
   }): Promise<ApiResponse<Tour[]>> => {
@@ -300,23 +306,48 @@ export const tourService = {
     return response.data as ApiResponse<Tour>;
   },
 
-  // Crear nuevo tour (solo admin)
-  createTour: async (tourData: {
-    name: string;
-    description: string;
-    photo?: string;
-    type: string;
-    availability: string;
-    base_price: number;
-    day: string;
-    time: string;
-    spots: number;
-    requirements: string;
-    duration: string;
-    difficulty: string;
-    supplier_corporate: number;
-  }): Promise<ApiResponse<Tour>> => {
-    const response = await http.post("/tours", tourData);
+  // Crear nuevo tour (admin/agent)
+  createTour: async (
+    tourData: {
+      name: string;
+      description: string;
+      type: string;
+      availability: string;
+      base_price: number;
+      spots: number;
+      requirements: string;
+      duration: string;
+      difficulty: string;
+      supplier_corporate: number;
+    },
+    schedules: Array<{ weekday: string; start_time: string }>,
+    images: Array<{ file: File; alt?: string; is_cover?: boolean; sort_order?: number }>
+  ): Promise<ApiResponse<Tour>> => {
+    const formData = new FormData();
+    
+    // 1. Agregar datos del tour como JSON string
+    formData.append("tour", JSON.stringify(tourData));
+    
+    // 2. Agregar schedules como JSON string array
+    if (schedules && schedules.length > 0) {
+      formData.append("schedules", JSON.stringify(schedules));
+    }
+    
+    // 3. Agregar imágenes y sus metadatos
+    if (images && images.length > 0) {
+      images.forEach((img) => {
+        formData.append("images", img.file);
+        formData.append("alts[]", img.alt || "");
+        formData.append("sort_orders[]", (img.sort_order ?? 0).toString());
+        formData.append("is_covers[]", (img.is_cover ?? false).toString());
+      });
+    }
+
+    const response = await http.post("/tours", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data as ApiResponse<Tour>;
   },
 
@@ -394,6 +425,46 @@ export const tourService = {
   ): Promise<ApiResponse> => {
     const response = await http.delete(`/tours/${tourId}/images/${imageId}`);
     return response.data as ApiResponse;
+  },
+
+  // Obtener horarios de un tour
+  getTourSchedules: async (tourId: string): Promise<ApiResponse<TourSchedule[]>> => {
+    const response = await http.get(`/tours/${tourId}/schedules`);
+    return response.data as ApiResponse<TourSchedule[]>;
+  },
+
+  // Agregar horarios a un tour (solo admin)
+  addTourSchedules: async (
+    tourId: string,
+    schedules: Array<{ weekday: string; start_time: string }>,
+  ): Promise<ApiResponse<TourSchedule[]>> => {
+    const response = await http.post(`/tours/${tourId}/schedules`, schedules);
+    return response.data as ApiResponse<TourSchedule[]>;
+  },
+
+  // Eliminar un horario de tour (solo admin)
+  deleteTourSchedule: async (tourId: string, scheduleId: string): Promise<ApiResponse> => {
+    const response = await http.delete(`/tours/${tourId}/schedules/${scheduleId}`);
+    return response.data as ApiResponse;
+  },
+
+  // Subir nueva imagen a un tour (multipart)
+  uploadTourImage: async (
+    tourId: string,
+    file: File,
+    alt: string,
+    isCover: boolean,
+    sortOrder: number,
+  ): Promise<ApiResponse<TourImage>> => {
+    const formData = new FormData();
+    formData.append("images", file);
+    formData.append("alts[]", alt);
+    formData.append("sort_orders[]", sortOrder.toString());
+    formData.append("is_covers[]", isCover.toString());
+    const response = await http.post(`/tours/${tourId}/images/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data as ApiResponse<TourImage>;
   },
 };
 

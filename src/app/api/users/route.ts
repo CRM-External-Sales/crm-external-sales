@@ -6,7 +6,7 @@ import {
   UserQuerySchema,
   CreateUserSchema,
 } from "@/app/schemas/user.schema";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import {
   sanitizeEmail,
   sanitizeUsername,
@@ -159,17 +159,19 @@ export const POST = withAdminAuth(
         );
       }
 
-      // Crear usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Crear usuario en Supabase Auth directamente como administrador
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: sanitizedData.email,
         password: sanitizedData.password,
+        email_confirm: true, // Auto-confirmar para que no tengan que verificar el correo
       });
 
       if (authError || !authData.user) {
+        console.error("Error al crear la cuenta en Supabase:", authError);
         return NextResponse.json(
           {
             success: false,
-            error: "Error al crear la cuenta de autenticación",
+            error: "Error al crear la cuenta de autenticación: " + (authError?.message || "Error desconocido"),
           },
           { status: 400 },
         );

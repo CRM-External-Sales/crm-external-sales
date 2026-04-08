@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ShieldCheck, Lock, KeyRound, Sparkles, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, Lock, KeyRound, Eye, EyeOff, Check, X } from "lucide-react";
 
 const ResetPasswordFormSchema = z
   .object({
@@ -41,6 +41,7 @@ export const ResetPasswordView = () => {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(ResetPasswordFormSchema),
@@ -49,6 +50,15 @@ export const ResetPasswordView = () => {
       confirmPassword: "",
     },
   });
+
+  const passwordValue = watch("password") || "";
+  const passwordRequirements = [
+    { label: "Mínimo 8 caracteres", valid: passwordValue.length >= 8 },
+    { label: "Al menos una mayúscula", valid: /[A-Z]/.test(passwordValue) },
+    { label: "Al menos una minúscula", valid: /[a-z]/.test(passwordValue) },
+    { label: "Al menos un número", valid: /[0-9]/.test(passwordValue) },
+    { label: "Al menos un símbolo (@$!%*?&)", valid: /[@$!%*?&]/.test(passwordValue) },
+  ];
 
   useEffect(() => {
     let mounted = true;
@@ -144,14 +154,6 @@ export const ResetPasswordView = () => {
             </p>
           </div>
 
-          <div className="rounded-md border border-[#647a3a]/20 bg-[#647a3a]/5 px-3 py-2 text-xs text-[#3C4A22]">
-            <div className="mb-1 flex items-center gap-1 font-medium">
-              <Sparkles className="h-3.5 w-3.5" />
-              Requisitos de seguridad
-            </div>
-            <p>Mínimo 8 caracteres, mayúscula, minúscula, número y símbolo.</p>
-          </div>
-
           {tokenError ? (
             <Alert variant="destructive">
               <AlertDescription>{tokenError}</AlertDescription>
@@ -185,6 +187,20 @@ export const ResetPasswordView = () => {
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
+            </div>
+            <div className="mt-2 flex flex-col gap-1 text-xs text-neutral-500">
+              {passwordRequirements.map((item) => (
+                <span key={item.label} className="inline-flex items-center gap-1">
+                  {item.valid ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : (
+                    <X className="h-3.5 w-3.5 text-neutral-400" />
+                  )}
+                  <span className={item.valid ? "text-emerald-700" : "text-neutral-500"}>
+                    {item.label}
+                  </span>
+                </span>
+              ))}
             </div>
             {errors.password ? (
               <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>

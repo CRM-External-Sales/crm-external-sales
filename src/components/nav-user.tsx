@@ -3,7 +3,6 @@
 import {
   BadgeCheck,
   Bell,
-  ChevronsUpDown,
   CreditCard,
   LogOut,
   Sparkles,
@@ -37,7 +36,7 @@ export function NavUser({
     avatar: string
   }
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile, setIconHoverCollapseSuspended } = useSidebar()
   const { logout } = useAuth()
   const router = useRouter()
 
@@ -49,34 +48,36 @@ export function NavUser({
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={setIconHoverCollapseSuspended}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-[#1A1F1B] data-[state=open]:text-white hover:bg-[#1A1F1B] hover:text-white text-white"
+              className="data-[state=open]:bg-[#1A1F1B] data-[state=open]:text-white hover:bg-[#1A1F1B] hover:text-white text-white group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:justify-center"
             >
-              <CircleUser className="size-18 text-white" />
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <CircleUser className="size-5 text-white" />
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium text-white">{user.name}</span>
                 <span className="truncate text-xs text-white/80">{user.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4 text-white" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg bg-[#313833] text-white border-[#1A1F1B]"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? "bottom" : "top"}
             align="end"
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+              <div 
+                className="flex items-center gap-2 px-2 py-2 text-left text-sm cursor-pointer hover:bg-[#1A1F1B] transition-colors rounded-sm"
+                onClick={() => router.push("/usuarios?edit=me")}
+              >
                 <CircleUser className="size-10 text-white" />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium text-white">{user.name}</span>
                   <span className="truncate text-xs text-white/70">{user.email}</span>
                 </div>
-                <Pencil className="ml-auto size-4 text-white/70" />
+                <Pencil className="ml-auto size-4 text-white/70 hover:text-white" />
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-[#1A1F1B]" />
@@ -85,7 +86,7 @@ export function NavUser({
               onClick={handleLogout}
             >
               <LogOut className="text-white/70" />
-              <span className="text-white">Log out</span>
+              <span className="text-white">Cerrar sesión</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

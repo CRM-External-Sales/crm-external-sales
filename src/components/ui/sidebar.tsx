@@ -32,6 +32,17 @@ const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
+/** Puntero va hacia un overlay de Radix (dropdown, tooltip, etc.) fuera del sidebar */
+function isPointerMovingToRadixOverlay(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return Boolean(
+    target.closest('[data-slot="dropdown-menu-content"]') ||
+      target.closest("[data-radix-popper-content-wrapper]") ||
+      target.closest("[data-radix-tooltip-content]") ||
+      target.closest('[role="tooltip"]')
+  )
+}
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
@@ -40,6 +51,9 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  /** Mientras un menú (p. ej. usuario) está abierto, no colapsar el sidebar por hover */
+  isIconHoverCollapseSuspended: () => boolean
+  setIconHoverCollapseSuspended: (suspended: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -68,6 +82,19 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
+
+  /** Ref para que el callback del timeout de hover lea el valor actual (evita bucles con dropdowns) */
+  const iconHoverCollapseSuspendedRef = React.useRef(false)
+  const setIconHoverCollapseSuspended = React.useCallback(
+    (suspended: boolean) => {
+      iconHoverCollapseSuspendedRef.current = suspended
+    },
+    []
+  )
+  const isIconHoverCollapseSuspended = React.useCallback(
+    () => iconHoverCollapseSuspendedRef.current,
+    []
+  )
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -122,8 +149,20 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      isIconHoverCollapseSuspended,
+      setIconHoverCollapseSuspended,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      isIconHoverCollapseSuspended,
+      setIconHoverCollapseSuspended,
+    ]
   )
 
   return (
@@ -158,13 +197,34 @@ function Sidebar({
   className,
   children,
   style,
+  onMouseEnter: onMouseEnterProp,
+  onMouseLeave: onMouseLeaveProp,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const {
+    isMobile,
+    state,
+    openMobile,
+    setOpenMobile,
+    setOpen,
+    isIconHoverCollapseSuspended,
+  } = useSidebar()
+  const iconHoverCollapseTimerRef = React.useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+
+  const clearIconHoverCollapseTimer = React.useCallback(() => {
+    if (iconHoverCollapseTimerRef.current) {
+      clearTimeout(iconHoverCollapseTimerRef.current)
+      iconHoverCollapseTimerRef.current = null
+    }
+  }, [])
+
+  React.useEffect(() => () => clearIconHoverCollapseTimer(), [clearIconHoverCollapseTimer])
 
   if (collapsible === "none") {
     return (
@@ -244,6 +304,25 @@ function Sidebar({
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className
         )}
+        onMouseEnter={(e) => {
+          onMouseEnterProp?.(e)
+          if (!isMobile && collapsible === "icon") {
+            clearIconHoverCollapseTimer()
+            setOpen(true)
+          }
+        }}
+        onMouseLeave={(e) => {
+          onMouseLeaveProp?.(e)
+          if (isMobile || collapsible !== "icon") return
+          if (isIconHoverCollapseSuspended()) return
+          if (isPointerMovingToRadixOverlay(e.relatedTarget)) return
+          clearIconHoverCollapseTimer()
+          iconHoverCollapseTimerRef.current = setTimeout(() => {
+            iconHoverCollapseTimerRef.current = null
+            if (isIconHoverCollapseSuspended()) return
+            setOpen(false)
+          }, 220)
+        }}
         {...props}
       >
         <div
@@ -479,7 +558,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:[&>span]:hidden group-data-[collapsible=icon]:[&>svg:last-child]:hidden [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {

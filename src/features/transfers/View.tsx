@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransfers } from "@/hooks/useTransfers";
 import { transferService, type Transfer, type ApiResponse } from "@/lib/api";
+import { AxiosError } from "axios";
 import {
   TransferViewFiltersSchema,
   transferViewFiltersDefaultValues,
@@ -37,7 +38,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MoreHorizontal, CheckCircle2, Trash2 } from "lucide-react";
-import { AxiosError } from "axios";
+import { toast } from "sonner";
 import { EditTransferView } from "./Edit";
 
 export const View = () => {
@@ -301,6 +302,11 @@ export const View = () => {
               ? `${successCount} transfer(s) eliminado(s) correctamente.`
               : `${successCount} transfer(s) eliminado(s). ${failedPlates.length} no se pudieron eliminar.`,
           );
+          toast.success(
+            failedPlates.length === 0
+              ? `${successCount} transfer(s) eliminado(s) correctamente.`
+              : `${successCount} transfer(s) eliminado(s). ${failedPlates.length} no se pudieron eliminar.`,
+          );
           await refetch();
           setTimeout(() => {
             setDeleteSuccess(null);
@@ -325,6 +331,7 @@ export const View = () => {
           setTransferToDelete(null);
           setSelectedTransfersToDelete([]);
           setDeleteSuccess("Transfer eliminado correctamente.");
+          toast.success("Transfer eliminado correctamente.");
           await refetch();
           setTimeout(() => {
             setDeleteSuccess(null);

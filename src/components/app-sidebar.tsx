@@ -24,9 +24,9 @@ import {
 import { useAuth } from "@/hooks/useAuth"
 
 // Datos del CRM
-const getNavData = (userRole?: string, userEmail?: string) => ({
+const getNavData = (userName?: string, userEmail?: string) => ({
   user: {
-    name: userRole || "Usuario",
+    name: userName || "Usuario",
     email: userEmail || "",
     avatar: "",
   },
@@ -124,15 +124,9 @@ const getNavData = (userRole?: string, userEmail?: string) => ({
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, loading } = useAuth()
-  
-  // Capitalizar el role para mostrarlo mejor
-  const formatRole = (role?: string) => {
-    if (!role) return "Usuario"
-    return role.charAt(0).toUpperCase() + role.slice(1)
-  }
 
   const navData = getNavData(
-    user?.role ? formatRole(user.role) : undefined,
+    user?.username,
     user?.email
   )
 

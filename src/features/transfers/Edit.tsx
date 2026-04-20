@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -13,22 +15,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  UpdateTransferFormSchema,
+  type UpdateTransferFormValues,
+  type UpdateTransferFormOutput,
+} from "@/app/schemas/transfer.schema";
 import { transferService, supplierService, type ApiResponse, type Transfer, type Supplier } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { AxiosError } from "axios";
 
 import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
-interface TransferFormState {
-  license_plate: string;
-  make: string;
-  model: string;
-  category: string;
-  capacity: string;
-  supplier_corporate: string;
-  availability: string;
-  type: string;
-  base_price: string;
-  sale_price: string;
-}
+const selectBaseClass =
+  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 interface EditTransferViewProps {
   transfer: Transfer;
@@ -36,27 +36,51 @@ interface EditTransferViewProps {
   onSuccess: () => void;
 }
 
+function transferToFormState(transfer: Transfer): UpdateTransferFormValues {
+  const corporate =
+    transfer.supplier_corporate ?? transfer.supplier?.corporate ?? 0;
+  return {
+    make: transfer.make ?? "",
+    model: transfer.model ?? "",
+    category: transfer.category ?? "",
+    capacity: transfer.capacity != null ? String(transfer.capacity) : "",
+    supplier_corporate: corporate ? String(corporate) : "",
+    availability: transfer.availability ?? "",
+    type: transfer.type ?? "",
+    base_price:
+      transfer.base_price != null && !Number.isNaN(Number(transfer.base_price))
+        ? String(transfer.base_price)
+        : "",
+    sale_price:
+      transfer.sale_price != null && !Number.isNaN(Number(transfer.sale_price))
+        ? String(transfer.sale_price)
+        : "",
+  };
+}
+
 export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransferViewProps) => {
-  const [form, setForm] = useState<TransferFormState>({
-    license_plate: transfer.license_plate.toString(),
-    make: transfer.make,
-    model: transfer.model,
-    category: transfer.category,
-    capacity: transfer.capacity.toString(),
-    supplier_corporate: transfer.supplier_corporate.toString(),
-    availability: transfer.availability,
-    type: transfer.type,
-    base_price: transfer.base_price.toString(),
-    sale_price: transfer.sale_price.toString(),
-  });
-  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(true);
+  const licensePlate = String(transfer.license_plate ?? "");
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<UpdateTransferFormValues, unknown, UpdateTransferFormOutput>({
+    resolver: zodResolver(UpdateTransferFormSchema),
+    defaultValues: transferToFormState(transfer),
+  });
+
+  const supplierCorporate = watch("supplier_corporate");
+  const availability = watch("availability");
+  const type = watch("type");
 
   // Cargar proveedores con servicio "Transfer"
   useEffect(() => {
@@ -80,15 +104,6 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
     loadSuppliers();
   }, []);
 
-  const handleChange =
-    (field: keyof TransferFormState) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      setForm((prev) => ({
-        ...prev,
-        [field]: event.target.value,
-      }));
-    };
-
   const handleDelete = () => {
     setDeleteError(null);
     setDeleteDialogOpen(true);
@@ -101,17 +116,18 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
 
   const handleConfirmDelete = async () => {
     setDeleteError(null);
-    setError(null);
+    setServerError(null);
     setSuccess(null);
     setDeleting(true);
 
     try {
-      const licensePlateNumber = parseInt(form.license_plate, 10);
+      const licensePlateNumber = parseInt(licensePlate, 10);
       const response = await transferService.deleteTransfer(licensePlateNumber);
 
       if (response.success) {
         setDeleteDialogOpen(false);
         setSuccess("Transfer eliminado correctamente.");
+        toast.success("Transfer eliminado correctamente.");
         setTimeout(() => {
           onSuccess();
         }, 1500);
@@ -152,121 +168,55 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
+  const onSubmit = async (data: UpdateTransferFormOutput) => {
+    setServerError(null);
     setSuccess(null);
 
-    // Validaciones
-    const capacityNumber = parseInt(form.capacity, 10);
-    if (!form.capacity || Number.isNaN(capacityNumber) || capacityNumber <= 0) {
-      setError("La capacidad debe ser un número positivo.");
-      return;
-    }
-
-    const basePriceNumber = parseFloat(form.base_price);
-    if (!form.base_price || Number.isNaN(basePriceNumber) || basePriceNumber <= 0) {
-      setError("El precio base debe ser un número positivo.");
-      return;
-    }
-
-    const salePriceNumber = parseFloat(form.sale_price);
-    if (!form.sale_price || Number.isNaN(salePriceNumber) || salePriceNumber <= 0) {
-      setError("El precio de venta debe ser un número positivo.");
-      return;
-    }
-
-    const supplierCorporateNumber = parseInt(form.supplier_corporate, 10);
-    if (!form.supplier_corporate || Number.isNaN(supplierCorporateNumber) || supplierCorporateNumber <= 0) {
-      setError("Debe seleccionar un proveedor.");
-      return;
-    }
-
-    if (!form.make || !form.model || !form.category || !form.availability || !form.type) {
-      setError("Todos los campos son obligatorios.");
-      return;
-    }
-
-    setSubmitting(true);
-
     try {
-      const licensePlateNumber = parseInt(form.license_plate, 10);
+      const licensePlateNumber = parseInt(licensePlate, 10);
       const response = await transferService.updateTransfer(licensePlateNumber, {
-        availability: form.availability.trim(),
-        make: form.make.trim(),
-        model: form.model.trim(),
-        category: form.category.trim(),
-        capacity: capacityNumber,
-        type: form.type.trim(),
-        base_price: basePriceNumber,
-        sale_price: salePriceNumber,
-        supplier_corporate: supplierCorporateNumber,
+        availability: data.availability,
+        make: data.make,
+        model: data.model,
+        category: data.category,
+        capacity: data.capacity,
+        type: data.type,
+        base_price: data.base_price,
+        sale_price: data.sale_price,
+        supplier_corporate: data.supplier_corporate,
       });
 
       if (response.success && response.data) {
         const updated: Transfer = response.data;
-        setSuccess(`Transfer con placa ${updated.license_plate} actualizado correctamente.`);
-        setError(null);
+        const message = `Transfer con placa ${updated.license_plate} actualizado correctamente.`;
+        setSuccess(message);
+        toast.success(message);
         setTimeout(() => {
           onSuccess();
         }, 1500);
       } else {
-        setError(response.error || response.message || "No se pudo actualizar el transfer.");
+        setServerError(response.error || response.message || "No se pudo actualizar el transfer.");
       }
     } catch (err) {
       if (err instanceof AxiosError && err.response?.data) {
         const data = err.response.data as ApiResponse;
-        const status = err.response.status;
-
-        switch (status) {
-          case 400:
-            setError(
-              data.error ||
-                "Los datos proporcionados no son válidos. Por favor, verifica los campos e intenta nuevamente.",
-            );
-            break;
-          case 403:
-            setError(
-              data.error ||
-                "No tienes permisos para actualizar transfers. Solo los administradores pueden realizar esta acción.",
-            );
-            break;
-          case 404:
-            setError(
-              data.error ||
-                "El transfer no fue encontrado. Puede que ya haya sido eliminado o la placa sea incorrecta.",
-            );
-            break;
-          case 409:
-            setError(
-              data.error ||
-                "Ya existe un transfer con esa placa. Por favor, verifica los datos e intenta nuevamente.",
-            );
-            break;
-          case 500:
-            setError(
-              data.error ||
-                "Error interno del servidor. Por favor, intenta nuevamente más tarde.",
-            );
-            break;
-          default:
-            setError(
-              data.error ||
-                data.message ||
-                "Ocurrió un error al actualizar el transfer. Intenta nuevamente.",
-            );
-        }
+        setServerError(
+          data.message ||
+            data.error ||
+            "Ocurrió un error al actualizar el transfer. Intenta nuevamente.",
+        );
       } else {
-        setError(
+        setServerError(
           err instanceof Error
             ? err.message
             : "Ocurrió un error al actualizar el transfer. Intenta nuevamente.",
         );
       }
-    } finally {
-      setSubmitting(false);
     }
   };
+
+  const inputNumberClass =
+    "bg-white border border-gray-300 rounded-md [&::-webkit-inner-spin-button]:appearance-auto [&::-webkit-outer-spin-button]:appearance-auto [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100";
 
   return (
     <div className="flex-1">
@@ -276,9 +226,9 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
             Modificar transfer
           </h1>
 
-          {error && (
+          {serverError && (
             <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{serverError}</AlertDescription>
             </Alert>
           )}
 
@@ -289,13 +239,13 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Columna Izquierda */}
               <div className="space-y-5">
                 {/* Placa de transfer */}
                 <div className="space-y-2">
-                  <Label htmlFor="license_plate" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="license_plate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Placa de transfer
                   </Label>
                   <Input
@@ -304,69 +254,66 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                     min={1}
                     step={1}
                     placeholder="Número de placa"
-                    value={form.license_plate}
-                    onChange={handleChange("license_plate")}
-                    className="bg-white border border-gray-300 rounded-md [&::-webkit-inner-spin-button]:appearance-auto [&::-webkit-outer-spin-button]:appearance-auto [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
-                    required
+                    value={licensePlate}
+                    className={inputNumberClass}
                     disabled
                   />
                 </div>
 
                 {/* Marca */}
                 <div className="space-y-2">
-                  <Label htmlFor="make" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="make" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Marca
                   </Label>
                   <Input
                     id="make"
                     type="text"
                     placeholder="Ingrese la marca del vehículo"
-                    value={form.make}
-                    onChange={handleChange("make")}
-                    required
+                    className={cn(errors.make && "border-destructive ring-1 ring-destructive/30")}
+                    {...register("make")}
                   />
+                  {errors.make && (
+                    <p className="text-sm text-destructive">{errors.make.message}</p>
+                  )}
                 </div>
 
                 {/* Modelo */}
                 <div className="space-y-2">
-                  <Label htmlFor="model" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="model" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Modelo
                   </Label>
                   <Input
                     id="model"
                     type="text"
                     placeholder="Ingrese el modelo del vehículo"
-                    value={form.model}
-                    onChange={handleChange("model")}
-                    required
+                    className={cn(errors.model && "border-destructive ring-1 ring-destructive/30")}
+                    {...register("model")}
                   />
+                  {errors.model && (
+                    <p className="text-sm text-destructive">{errors.model.message}</p>
+                  )}
                 </div>
 
                 {/* Categoría */}
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="category" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Categoría
                   </Label>
-                  <select
+                  <Input
                     id="category"
-                    value={form.category}
-                    onChange={handleChange("category")}
-                    className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      form.category === "" ? "text-muted-foreground" : "text-foreground"
-                    }`}
-                    required
-                  >
-                    <option value="">Seleccionar la categoría del transfer</option>
-                    <option value="Económico">Económico</option>
-                    <option value="Comfort">Comfort</option>
-                    <option value="Luxury">Luxury</option>
-                    <option value="Premium">Premium</option>
-                  </select>
+                    type="text"
+                    placeholder="Ingrese la categoría del transfer"
+                    className={cn(errors.category && "border-destructive ring-1 ring-destructive/30")}
+                    {...register("category")}
+                  />
+                  {errors.category && (
+                    <p className="text-sm text-destructive">{errors.category.message}</p>
+                  )}
                 </div>
 
                 {/* Capacidad */}
                 <div className="space-y-2">
-                  <Label htmlFor="capacity" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="capacity" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Capacidad
                   </Label>
                   <Input
@@ -375,11 +322,15 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                     min={1}
                     step={1}
                     placeholder="Ingrese la capacidad del vehículo"
-                    value={form.capacity}
-                    onChange={handleChange("capacity")}
-                    className="bg-white border border-gray-300 rounded-md [&::-webkit-inner-spin-button]:appearance-auto [&::-webkit-outer-spin-button]:appearance-auto [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
-                    required
+                    className={cn(
+                      inputNumberClass,
+                      errors.capacity && "border-destructive ring-1 ring-destructive/30",
+                    )}
+                    {...register("capacity")}
                   />
+                  {errors.capacity && (
+                    <p className="text-sm text-destructive">{errors.capacity.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -387,18 +338,18 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
               <div className="space-y-5">
                 {/* Proveedor */}
                 <div className="space-y-2">
-                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Proveedor
                   </Label>
                   <select
                     id="supplier_corporate"
-                    value={form.supplier_corporate}
-                    onChange={handleChange("supplier_corporate")}
                     disabled={loadingSuppliers}
-                    className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      form.supplier_corporate === "" ? "text-muted-foreground" : "text-foreground"
-                    }`}
-                    required
+                    className={cn(
+                      selectBaseClass,
+                      supplierCorporate === "" ? "text-muted-foreground" : "text-foreground",
+                      errors.supplier_corporate && "border-destructive ring-1 ring-destructive/30",
+                    )}
+                    {...register("supplier_corporate")}
                   >
                     <option value="">
                       {loadingSuppliers
@@ -411,55 +362,61 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                       </option>
                     ))}
                   </select>
+                  {errors.supplier_corporate && (
+                    <p className="text-sm text-destructive">{errors.supplier_corporate.message}</p>
+                  )}
                 </div>
 
                 {/* Disponibilidad */}
                 <div className="space-y-2">
-                  <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Disponibilidad
                   </Label>
                   <select
                     id="availability"
-                    value={form.availability}
-                    onChange={handleChange("availability")}
-                    className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      form.availability === "" ? "text-muted-foreground" : "text-foreground"
-                    }`}
-                    required
+                    className={cn(
+                      selectBaseClass,
+                      availability === "" ? "text-muted-foreground" : "text-foreground",
+                      errors.availability && "border-destructive ring-1 ring-destructive/30",
+                    )}
+                    {...register("availability")}
                   >
                     <option value="">Seleccionar la disponibilidad del transfer</option>
                     <option value="available">Disponible</option>
-                    <option value="busy">Ocupado</option>
                     <option value="maintenance">En mantenimiento</option>
                     <option value="unavailable">No disponible</option>
                   </select>
+                  {errors.availability && (
+                    <p className="text-sm text-destructive">{errors.availability.message}</p>
+                  )}
                 </div>
 
                 {/* Tipo */}
                 <div className="space-y-2">
-                  <Label htmlFor="type" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="type" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Tipo
                   </Label>
                   <select
                     id="type"
-                    value={form.type}
-                    onChange={handleChange("type")}
-                    className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      form.type === "" ? "text-muted-foreground" : "text-foreground"
-                    }`}
-                    required
+                    className={cn(
+                      selectBaseClass,
+                      type === "" ? "text-muted-foreground" : "text-foreground",
+                      errors.type && "border-destructive ring-1 ring-destructive/30",
+                    )}
+                    {...register("type")}
                   >
                     <option value="">Seleccionar el tipo de transfer</option>
-                    <option value="Van">Van</option>
-                    <option value="Bus">Bus</option>
-                    <option value="Car">Car</option>
-                    <option value="SUV">SUV</option>
+                    <option value="Interno">Interno</option>
+                    <option value="Externo">Externo</option>
                   </select>
+                  {errors.type && (
+                    <p className="text-sm text-destructive">{errors.type.message}</p>
+                  )}
                 </div>
 
                 {/* Precio base */}
                 <div className="space-y-2">
-                  <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Precio base
                   </Label>
                   <Input
@@ -468,16 +425,20 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                     min={0}
                     step={0.01}
                     placeholder="Ingrese el precio base del transfer"
-                    value={form.base_price}
-                    onChange={handleChange("base_price")}
-                    className="bg-white border border-gray-300 rounded-md [&::-webkit-inner-spin-button]:appearance-auto [&::-webkit-outer-spin-button]:appearance-auto [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
-                    required
+                    className={cn(
+                      inputNumberClass,
+                      errors.base_price && "border-destructive ring-1 ring-destructive/30",
+                    )}
+                    {...register("base_price")}
                   />
+                  {errors.base_price && (
+                    <p className="text-sm text-destructive">{errors.base_price.message}</p>
+                  )}
                 </div>
 
                 {/* Precio venta */}
                 <div className="space-y-2">
-                  <Label htmlFor="sale_price" className="text-[#4A4A4A] font-semibold">
+                  <Label htmlFor="sale_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                     Precio venta
                   </Label>
                   <Input
@@ -486,11 +447,15 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                     min={0}
                     step={0.01}
                     placeholder="Ingrese el precio venta del transfer"
-                    value={form.sale_price}
-                    onChange={handleChange("sale_price")}
-                    className="bg-white border border-gray-300 rounded-md [&::-webkit-inner-spin-button]:appearance-auto [&::-webkit-outer-spin-button]:appearance-auto [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
-                    required
+                    className={cn(
+                      inputNumberClass,
+                      errors.sale_price && "border-destructive ring-1 ring-destructive/30",
+                    )}
+                    {...register("sale_price")}
                   />
+                  {errors.sale_price && (
+                    <p className="text-sm text-destructive">{errors.sale_price.message}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -502,7 +467,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                 variant="destructive"
                 onClick={handleDelete}
                 className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600"
-                disabled={submitting || deleting}
+                disabled={isSubmitting || deleting}
               >
                 {deleting ? "Eliminando..." : "Eliminar"}
               </Button>
@@ -512,16 +477,16 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                   variant="outline"
                   onClick={onCancel}
                   className="bg-transparent border-2 border-[#313833] text-[#313833] hover:bg-transparent hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={submitting || deleting}
+                  disabled={isSubmitting || deleting}
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
                   className="bg-[#647a3a] text-white hover:bg-[#4f622d] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#647a3a]"
-                  disabled={submitting || deleting}
+                  disabled={isSubmitting || deleting}
                 >
-                  {submitting ? "Guardando..." : "Guardar"}
+                  {isSubmitting ? "Guardando..." : "Guardar"}
                 </Button>
               </div>
             </div>
@@ -536,7 +501,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                 </DialogTitle>
                 <DialogDescription className="text-center text-[#4A4A4A] pt-2">
                   Estás a punto de eliminar el transfer con placa{" "}
-                  <strong className="text-[#1A1F1B]">{form.license_plate}</strong>.
+                  <strong className="text-[#1A1F1B]">{licensePlate}</strong>.
                   <br />
                   <br />
                   <span className="text-red-600 font-medium">
@@ -578,4 +543,6 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
     </div>
   );
 };
+
+
 

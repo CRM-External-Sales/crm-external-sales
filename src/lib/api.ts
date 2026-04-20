@@ -134,6 +134,7 @@ export const userService = {
       email: string;
       phone: string;
       role: "admin" | "agent" | "customer";
+      password?: string;
     }>,
   ): Promise<ApiResponse<User>> => {
     const response = await http.put(`/users/${id}`, userData);
@@ -263,25 +264,6 @@ export interface Supplier {
   email: string;
   service: string;
   created_at: string;
-}
-
-// Interfaces para Transfers
-export interface Transfer {
-  license_plate: number;
-  supplier_corporate: number;
-  availability: string;
-  make: string;
-  model: string;
-  category: string;
-  capacity: number;
-  type: string;
-  base_price: number;
-  sale_price: number;
-  supplier?: {
-    corporate: number;
-    company: string;
-    email: string;
-  };
 }
 
 // Interfaces para Transfers

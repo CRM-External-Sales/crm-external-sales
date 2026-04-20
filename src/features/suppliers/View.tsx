@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { SupplierQuerySchema } from "@/app/schemas/supplier.schema";
 import { MoreHorizontal, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { EditSupplierView } from "./Edit";
 
@@ -256,6 +257,7 @@ export const View = () => {
         setDeleteDialogOpen(false);
         setSupplierToDelete(null);
         setDeleteSuccess("Proveedor eliminado correctamente.");
+        toast.success("Proveedor eliminado correctamente.");
         // Recargar la lista de proveedores
         await refetch();
         // Limpiar el mensaje de éxito después de 3 segundos

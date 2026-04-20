@@ -92,7 +92,7 @@ export function withAuth(
     requireAuth: true,
     rateLimit: {
       windowMs: 15 * 60 * 1000, // 15 minutos
-      maxRequests: 100, // 100 requests por ventana
+      maxRequests: 1000, // 1000 en ventana para suites de tests (TestSprite)
     },
     sanitizeInput: true,
   })(async (request: NextRequest, ...args: unknown[]): Promise<NextResponse> => {
@@ -154,7 +154,7 @@ export function withAdminAuth(
     allowedRoles: ["admin"],
     rateLimit: {
       windowMs: 15 * 60 * 1000, // 15 minutos
-      maxRequests: 50, // Menos requests para operaciones admin
+      maxRequests: 1000, // 1000 en ventana para suites de tests (TestSprite)
     },
     sanitizeInput: true,
   })(async (request: NextRequest, ...args: unknown[]): Promise<NextResponse> => {

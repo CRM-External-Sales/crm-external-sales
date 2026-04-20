@@ -179,7 +179,7 @@ export async function POST(
         processedSchedules.push({
           id: Number(schedule.id),
           tour_id: Number(schedule.tour_id),
-          weekday: schedule.weekday,
+          weekday: schedule.weekday ?? scheduleData.weekday,
           start_time: scheduleData.start_time, // Mantener el formato original
           created_at: schedule.created_at,
         });

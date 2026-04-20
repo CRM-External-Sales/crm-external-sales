@@ -21,6 +21,7 @@ interface TourWhereInput {
   type?: string;
   name?: { contains: string; mode?: "insensitive" };
   availability?: string;
+  difficulty?: string;
 }
 
 // GET /api/tours - Obtener todos los tours disponibles
@@ -31,7 +32,7 @@ export const GET = withAuth(
       const queryParams = Object.fromEntries(searchParams.entries());
 
       const validatedQuery = TourQuerySchema.parse(queryParams);
-      const { page, limit, type, name, availability } = validatedQuery;
+      const { page, limit, type, name, availability, difficulty } = validatedQuery;
 
       // Construir cláusula where
       const where: TourWhereInput = {};
@@ -46,6 +47,10 @@ export const GET = withAuth(
 
       if (availability) {
         where.availability = availability;
+      }
+
+      if (difficulty) {
+        where.difficulty = difficulty;
       }
 
       // Calcular paginación
@@ -293,7 +298,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
 
         processedSchedules.push({
           id: typeof schedule.id === "bigint" ? Number(schedule.id) : schedule.id,
-          weekday: schedule.weekday,
+          weekday: schedule.weekday ?? scheduleData.weekday,
           start_time: scheduleData.start_time, // Mantener el formato original
         });
       }

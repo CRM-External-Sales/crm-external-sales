@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { supabase } from "@/lib/supabase";
-import {
-  ForgotPasswordSchema,
-  ResetPasswordSchema,
-} from "@/app/schemas/user.schema";
+import { ForgotPasswordSchema } from "@/app/schemas/user.schema";
 
 // POST /api/auth/forgot-password - Solicitar restablecimiento de contraseña
 export async function POST(request: NextRequest) {
@@ -11,15 +9,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = ForgotPasswordSchema.parse(body);
 
-    // Enviar email de restablecimiento
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(
       validatedData.email,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+        redirectTo: `${appUrl}/auth/reset-password`,
       },
     );
 
     if (error) {
+      console.error("Supabase Auth Error (forgot-password):", error);
       return NextResponse.json(
         {
           success: false,
@@ -36,7 +35,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error en forgot password:", error);
 
-    if (error instanceof Error && error.name === "ZodError") {
+    if (error instanceof ZodError) {
       return NextResponse.json(
         { success: false, error: "Datos inválidos", details: error.message },
         { status: 400 },

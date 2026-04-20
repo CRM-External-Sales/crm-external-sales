@@ -84,6 +84,7 @@ export const TourQuerySchema = z.object({
   type: z.string().optional(),
   name: z.string().optional(),
   availability: z.string().optional(),
+  difficulty: z.string().optional(),
 });
 
 // Tipos TypeScript

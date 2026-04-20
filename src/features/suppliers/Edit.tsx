@@ -20,6 +20,7 @@ import {
 import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
 import { UpdateSupplierSchema } from "@/app/schemas/supplier.schema";
 import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 const editSupplierFormSchema = UpdateSupplierSchema.extend({
   corporate: z.coerce.number().int().positive("La identificación debe ser un número positivo."),
@@ -95,6 +96,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
       if (response.success) {
         setDeleteDialogOpen(false);
         setSuccess("Proveedor eliminado correctamente.");
+        toast.success("Proveedor eliminado correctamente.");
         setTimeout(() => {
           onSuccess();
         }, 1500);
@@ -154,7 +156,9 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
 
       if (response.success && response.data) {
         const updated: Supplier = response.data;
-        setSuccess(`Proveedor ${updated.company} actualizado correctamente.`);
+        const message = `Proveedor ${updated.company} actualizado correctamente.`;
+        setSuccess(message);
+        toast.success(message);
         setError(null);
         setTimeout(() => {
           onSuccess();
@@ -239,7 +243,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Identificación */}
             <div className="space-y-2">
-              <Label htmlFor="corporate" className="text-[#4A4A4A] font-semibold">
+              <Label htmlFor="corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
                 Identificación
               </Label>
               <Input
@@ -257,7 +261,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
 
             {/* Nombre */}
             <div className="space-y-2">
-              <Label htmlFor="company" className="text-[#4A4A4A] font-semibold">Nombre</Label>
+              <Label htmlFor="company" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Nombre</Label>
               <Input
                 id="company"
                 type="text"
@@ -269,7 +273,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
 
             {/* Correo */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#4A4A4A] font-semibold">Correo</Label>
+              <Label htmlFor="email" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Correo</Label>
               <Input
                 id="email"
                 type="email"
@@ -281,7 +285,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
 
             {/* Teléfono */}
             <div className="space-y-2">
-              <Label htmlFor="phone" className="text-[#4A4A4A] font-semibold">Teléfono</Label>
+              <Label htmlFor="phone" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Teléfono</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -293,7 +297,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
 
             {/* Servicio */}
             <div className="space-y-2">
-              <Label htmlFor="service" className="text-[#4A4A4A] font-semibold">Servicio</Label>
+              <Label htmlFor="service" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Servicio</Label>
               <select
                 id="service"
                 {...register("service")}

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { tourService, supplierService, type ApiResponse, type Supplier } from "@/lib/api";
+import { toast } from "sonner";
 
 import { CheckCircle2, Trash2, UploadCloud, FileImage } from "lucide-react";
 
@@ -219,7 +220,9 @@ export const CreateTourView: React.FC = () => {
       );
 
       if (response.success && response.data) {
-        setSuccess(`Tour '${data.name}' creado correctamente.`);
+        const message = `Tour '${data.name}' creado correctamente.`;
+        setSuccess(message);
+        toast.success(message);
         handleReset();
       } else {
         setGlobalError(response.error || "No se pudo crear el tour.");
@@ -269,7 +272,7 @@ export const CreateTourView: React.FC = () => {
               {/* Columna Izquierda */}
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-[#4A4A4A] font-semibold">Nombre</Label>
+                  <Label htmlFor="name" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Nombre</Label>
                   <Input
                     id="name"
                     placeholder="Ingresa el nombre del tour"
@@ -279,7 +282,7 @@ export const CreateTourView: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-[#4A4A4A] font-semibold">Descripción</Label>
+                  <Label htmlFor="description" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Descripción</Label>
                   <textarea
                     id="description"
                     className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
@@ -290,7 +293,7 @@ export const CreateTourView: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="requirements" className="text-[#4A4A4A] font-semibold">Requisitos</Label>
+                  <Label htmlFor="requirements" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Requisitos</Label>
                   <textarea
                     id="requirements"
                     className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
@@ -359,7 +362,7 @@ export const CreateTourView: React.FC = () => {
               <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold">Disponibilidad</Label>
+                    <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Disponibilidad</Label>
                     <select
                       id="availability"
                       {...register("availability")}
@@ -373,7 +376,7 @@ export const CreateTourView: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="difficulty" className="text-[#4A4A4A] font-semibold">Dificultad</Label>
+                    <Label htmlFor="difficulty" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Dificultad</Label>
                     <select
                       id="difficulty"
                       {...register("difficulty")}
@@ -390,7 +393,7 @@ export const CreateTourView: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="duration" className="text-[#4A4A4A] font-semibold">Duración</Label>
+                    <Label htmlFor="duration" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Duración</Label>
                     <select
                       id="duration"
                       {...register("duration")}
@@ -407,7 +410,7 @@ export const CreateTourView: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="spots" className="text-[#4A4A4A] font-semibold">Espacios</Label>
+                    <Label htmlFor="spots" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Espacios</Label>
                     <Input
                       id="spots"
                       type="number"
@@ -421,7 +424,7 @@ export const CreateTourView: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="type" className="text-[#4A4A4A] font-semibold">Tipo</Label>
+                    <Label htmlFor="type" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Tipo</Label>
                     <select
                       id="type"
                       {...register("type")}
@@ -437,7 +440,7 @@ export const CreateTourView: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold">Precio</Label>
+                    <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Precio</Label>
                     <Input
                       id="base_price"
                       type="number"
@@ -451,7 +454,7 @@ export const CreateTourView: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold">Proveedor</Label>
+                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Proveedor</Label>
                   <select
                     id="supplier_corporate"
                     {...register("supplier_corporate")}

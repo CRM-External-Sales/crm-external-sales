@@ -1,16 +1,10 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { View } from "@/features/transfers/View";
+import { CreateUserView } from "@/features/users/Create";
 
-export default function TransfersPage() {
+export default function CreateUserPage() {
   return (
     <DashboardLayout>
-      <View />
+      <CreateUserView />
     </DashboardLayout>
   );
 }
-
-
-
-
-
-

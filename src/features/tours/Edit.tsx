@@ -17,6 +17,7 @@ import {
   type TourImage,
   type TourSchedule,
 } from "@/lib/api";
+import { toast } from "sonner";
 
 import { CheckCircle2, Trash2, UploadCloud, FileImage } from "lucide-react";
 
@@ -305,6 +306,7 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
       }
 
       setSuccess(`Tour '${data.name}' actualizado correctamente.`);
+      toast.success(`Tour '${data.name}' actualizado correctamente.`);
       setTimeout(() => onSuccess(), 1500);
     } catch (err: unknown) {
       const e = err as any;
@@ -340,13 +342,13 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
           {/* ── Columna Izquierda ── */}
           <div className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-[#4A4A4A] font-semibold">Nombre</Label>
+              <Label htmlFor="name" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Nombre</Label>
               <Input id="name" placeholder="Nombre del tour" {...register("name")} />
               {errors.name && <p className="text-red-500 text-xs font-medium">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-[#4A4A4A] font-semibold">Descripción</Label>
+              <Label htmlFor="description" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Descripción</Label>
               <textarea
                 id="description"
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
@@ -357,7 +359,7 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requirements" className="text-[#4A4A4A] font-semibold">Requisitos</Label>
+              <Label htmlFor="requirements" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Requisitos</Label>
               <textarea
                 id="requirements"
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
@@ -425,7 +427,7 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold">Disponibilidad</Label>
+                <Label htmlFor="availability" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Disponibilidad</Label>
                 <select id="availability" {...register("availability")}
                   className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!watch("availability") ? "text-muted-foreground" : ""}`}>
                   <option value="">Seleccionar disponibilidad</option>
@@ -435,7 +437,7 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
                 {errors.availability && <p className="text-red-500 text-xs font-medium">{errors.availability.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="difficulty" className="text-[#4A4A4A] font-semibold">Dificultad</Label>
+                <Label htmlFor="difficulty" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Dificultad</Label>
                 <select id="difficulty" {...register("difficulty")}
                   className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!watch("difficulty") ? "text-muted-foreground" : ""}`}>
                   <option value="">Seleccionar dificultad</option>
@@ -449,7 +451,7 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="duration" className="text-[#4A4A4A] font-semibold">Duración</Label>
+                <Label htmlFor="duration" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Duración</Label>
                 <select id="duration" {...register("duration")}
                   className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!watch("duration") ? "text-muted-foreground" : ""}`}>
                   <option value="">Seleccionar duración</option>
@@ -462,7 +464,7 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
                 {errors.duration && <p className="text-red-500 text-xs font-medium">{errors.duration.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="spots" className="text-[#4A4A4A] font-semibold">Espacios</Label>
+                <Label htmlFor="spots" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Espacios</Label>
                 <Input id="spots" type="number" min={1} placeholder="Espacios" {...register("spots")} />
                 {errors.spots && <p className="text-red-500 text-xs font-medium">{errors.spots.message}</p>}
               </div>
@@ -470,7 +472,7 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="type" className="text-[#4A4A4A] font-semibold">Tipo</Label>
+                <Label htmlFor="type" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Tipo</Label>
                 <select id="type" {...register("type")}
                   className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!watch("type") ? "text-muted-foreground" : ""}`}>
                   <option value="">Seleccionar tipo</option>
@@ -482,14 +484,14 @@ export const EditTourView: React.FC<EditTourProps> = ({ tour, onCancel, onSucces
                 {errors.type && <p className="text-red-500 text-xs font-medium">{errors.type.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold">Precio</Label>
+                <Label htmlFor="base_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Precio</Label>
                 <Input id="base_price" type="number" min={0} step={0.01} placeholder="Precio base ($)" {...register("base_price")} />
                 {errors.base_price && <p className="text-red-500 text-xs font-medium">{errors.base_price.message}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold">Proveedor</Label>
+              <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">Proveedor</Label>
               <select id="supplier_corporate" {...register("supplier_corporate")} disabled={loadingSuppliers}
                 className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${!watch("supplier_corporate") ? "text-muted-foreground" : ""}`}>
                 <option value="">{loadingSuppliers ? "Cargando..." : "Seleccionar proveedor"}</option>

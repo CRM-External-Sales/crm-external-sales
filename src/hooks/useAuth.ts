@@ -7,6 +7,7 @@ import {
   type User,
   type ApiResponse,
 } from "@/lib/api";
+import { clearClientHomeGate } from "@/features/client-home/clientCatalogAccess";
 
 // Hook para autenticación
 export const useAuth = () => {
@@ -131,6 +132,7 @@ export const useAuth = () => {
       userUtils.removeUserData();
       setUser(null);
       setError(null);
+      clearClientHomeGate();
     }
   }, []);
 

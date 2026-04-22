@@ -1,11 +1,10 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { View } from "@/features/home/View";
+import { HomeRouter } from "@/features/home/HomeRouter";
 
 export default function HomePage() {
   return (
     <DashboardLayout>
-      <View />
+      <HomeRouter />
     </DashboardLayout>
   );
 }
-

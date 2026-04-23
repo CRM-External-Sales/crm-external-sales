@@ -8,14 +8,12 @@ import { serializeTourForJSON } from "@/lib/utils";
 
 const SIGNED_IMAGE_TTL_SEC = 60 * 60 * 24 * 7;
 
-/** Rellena `path` con URL firmada o pública para que el catálogo muestre imágenes del bucket `tours`. */
 async function enrichCatalogTourImages(tours: CatalogTour[]): Promise<void> {
-  for (const tour of tours) {
-    for (let i = 0; i < tour.tour_image.length; i++) {
-      const img = tour.tour_image[i];
+  const promises = tours.flatMap((tour) =>
+    tour.tour_image.map(async (img, i) => {
       const raw = (img.path || "").trim();
-      if (!raw || /^https?:\/\//i.test(raw)) continue;
-      if (!raw.includes("/")) continue;
+      if (!raw || /^https?:\/\//i.test(raw)) return;
+      if (!raw.includes("/")) return;
 
       const { data } = await supabaseAdmin.storage
         .from("tours")
@@ -27,8 +25,10 @@ async function enrichCatalogTourImages(tours: CatalogTour[]): Promise<void> {
         const pub = resolveTourImageUrl(raw);
         if (pub) tour.tour_image[i] = { ...img, path: pub };
       }
-    }
-  }
+    })
+  );
+
+  await Promise.all(promises);
 }
 
 export default async function CatalogoPage() {

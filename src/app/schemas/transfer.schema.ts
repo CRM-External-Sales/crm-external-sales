@@ -18,10 +18,8 @@ export const CreateTransferSchema = z.object({
   sale_price: z
     .number()
     .positive("El precio de venta debe ser un número positivo"),
-  supplier_corporate: z
-    .number()
-    .int()
-    .positive("El proveedor es requerido"),
+  /** Si se omite, en API se asume proveedor de operación interna. */
+  supplier_corporate: z.number().int().positive().optional(),
 });
 
 // Esquema para actualizar un transfer
@@ -98,9 +96,15 @@ export const CreateTransferFormSchema = z.object({
     "La capacidad es requerida",
     "La capacidad debe ser un número entero positivo",
   ),
-  supplier_corporate: zPositiveIntString(
-    "Debe seleccionar un proveedor",
-    "Debe seleccionar un proveedor válido",
+  supplier_corporate: z.preprocess(
+    (v) => {
+      if (v === "" || v == null) return undefined;
+      const s = String(v).trim();
+      if (s === "") return undefined;
+      const n = parseInt(s, 10);
+      return Number.isNaN(n) ? undefined : n;
+    },
+    z.number().int().positive().optional(),
   ),
   availability: z.string().trim().min(1, "La disponibilidad es requerida"),
   type: z.string().trim().min(1, "El tipo es requerido"),

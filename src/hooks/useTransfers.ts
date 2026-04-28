@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { transferService, type Transfer, type ApiResponse } from "@/lib/api";
-import { AxiosError } from "axios";
+import { isAxiosLikeError } from "@/lib/http-error";
 
 interface UseTransfersParams {
   page?: number;
@@ -60,7 +60,7 @@ export const useTransfers = (params: UseTransfersParams = {}): UseTransfersRetur
       }
     } catch (err) {
       // Manejar errores de axios (400, 500, etc.)
-      if (err instanceof AxiosError && err.response?.data) {
+      if (isAxiosLikeError(err) && err.response?.data) {
         const errorData = err.response.data as ApiResponse;
         setError(errorData.error || errorData.message || "Error al cargar transfers");
       } else {

@@ -15,7 +15,7 @@ import {
 } from "@/app/schemas/transfer.schema";
 import { transferService, supplierService, type ApiResponse, type Transfer, type Supplier } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AxiosError } from "axios";
+import { isAxiosLikeError } from "@/lib/http-error";
 
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -76,7 +76,9 @@ export const CreateTransferView = () => {
     try {
       const response = await transferService.createTransfer({
         license_plate: data.license_plate,
-        supplier_corporate: data.supplier_corporate,
+        ...(data.supplier_corporate != null
+          ? { supplier_corporate: data.supplier_corporate }
+          : {}),
         availability: data.availability,
         make: data.make,
         model: data.model,
@@ -100,7 +102,7 @@ export const CreateTransferView = () => {
         setServerError(response.error || "No se pudo crear el transfer.");
       }
     } catch (err: unknown) {
-      if (err instanceof AxiosError && err.response?.data) {
+      if (isAxiosLikeError(err) && err.response?.data) {
         const data = err.response.data as ApiResponse & { message?: string; fieldErrors?: Record<string, string> };
         setServerError(
           data.message ||
@@ -243,7 +245,7 @@ export const CreateTransferView = () => {
 
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
+                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold">
                     Proveedor
                   </Label>
                   <select
@@ -258,8 +260,8 @@ export const CreateTransferView = () => {
                   >
                     <option value="">
                       {loadingSuppliers
-                        ? "Cargando proveedores..."
-                        : "Seleccionar el proveedor del transfer"}
+                        ? "Cargando proveedores…"
+                        : "Operación interna (sin proveedor externo)"}
                     </option>
                     {suppliers.map((supplier) => (
                       <option key={supplier.corporate} value={supplier.corporate.toString()}>
@@ -267,6 +269,10 @@ export const CreateTransferView = () => {
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs text-muted-foreground">
+                    Si no aplica un proveedor externo, deje el valor por defecto; el transfer
+                    queda como operación interna.
+                  </p>
                   {errors.supplier_corporate && (
                     <p className="text-sm text-destructive">{errors.supplier_corporate.message}</p>
                   )}

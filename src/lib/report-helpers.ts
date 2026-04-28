@@ -138,7 +138,17 @@ export function construirWhereClause(
   }
 
   if (filtrosPermitidos.includes("estado") && filtros.estado) {
-    where.state = filtros.estado;
+    if (filtros.estado === "cancelled") {
+      where.state = "cancelled";
+    } else if (
+      filtros.estado === "pending" ||
+      filtros.estado === "in_progress" ||
+      filtros.estado === "completed"
+    ) {
+      (where as { state?: unknown }).state = { not: "cancelled" };
+    } else {
+      (where as { state?: string }).state = filtros.estado;
+    }
   }
 
   // Filtro de tipo_reserva (si está permitido y proporcionado)

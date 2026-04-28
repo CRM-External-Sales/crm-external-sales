@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransfers } from "@/hooks/useTransfers";
 import { transferService, type Transfer, type ApiResponse } from "@/lib/api";
-import { AxiosError } from "axios";
+import { isAxiosLikeError } from "@/lib/http-error";
+import { formatUsd } from "@/lib/format-currency";
 import {
   TransferViewFiltersSchema,
   transferViewFiltersDefaultValues,
@@ -137,7 +138,7 @@ export const View = () => {
       }
     } catch (err) {
       setSingleTransfer(null);
-      if (err instanceof AxiosError) {
+      if (isAxiosLikeError(err)) {
         if (err.response?.status === 404) {
           setSearchError("No se encontró un transfer con esa placa.");
           return;
@@ -341,7 +342,7 @@ export const View = () => {
         }
       }
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data) {
+      if (isAxiosLikeError(err) && err.response?.data) {
         const data = err.response.data as ApiResponse & { details?: string };
         const status = err.response.status;
 
@@ -638,10 +639,7 @@ export const View = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       {transfer.base_price != null && !isNaN(Number(transfer.base_price))
-                        ? `$${Number(transfer.base_price).toLocaleString("es-CR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`
+                        ? formatUsd(Number(transfer.base_price))
                         : "-"}
                     </TableCell>
                     <TableCell className="text-center">

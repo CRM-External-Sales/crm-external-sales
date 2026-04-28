@@ -1,17 +1,20 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import { GranularidadTemporal } from "./report-helpers";
+import { computeEffectiveReservationState } from "./reservation-lifecycle";
 
 /**
  * Tipo para reserva con relaciones necesarias para agregaciones
  */
 type ReservaConRelaciones = {
   date: Date;
+  time: Date;
   state: string;
   total: bigint | number | string | Decimal;
   tour_id: bigint;
   tour?: {
     id_tour: bigint;
     name: string;
+    duration?: string;
   };
   employee_user: string;
   app_user?: {
@@ -102,7 +105,14 @@ export function agregarReservasPorEstado(
   const mapEstados = new Map<string, number>();
 
   reservas.forEach((reserva) => {
-    const estado = reserva.state;
+    const estado = computeEffectiveReservationState(
+      {
+        state: reserva.state,
+        date: reserva.date,
+        time: reserva.time,
+      },
+      reserva.tour?.duration,
+    );
     mapEstados.set(estado, (mapEstados.get(estado) || 0) + 1);
   });
 

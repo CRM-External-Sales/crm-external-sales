@@ -7,6 +7,7 @@ import { ZodError } from "zod";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { validarFiltrosParaTipoReporte, construirWhereClause, calcularKPIsGenerales, FiltrosReporte, TipoReporte, GranularidadTemporal,} from "@/lib/report-helpers";
 import { agregarReservasPorTiempo, agregarReservasPorEstado, agregarReservasPorEmpleado, agregarIngresosPorTiempo, agregarIngresosPorTour,} from "@/lib/report-aggregations";
+import { filterReservationsByEffectiveState, isLifecycleListState } from "@/lib/reservation-lifecycle";
 
 /**
  * Genera el reporte según el tipo especificado
@@ -25,7 +26,7 @@ async function generarReporte(
   const whereClause = construirWhereClause(tipoReporte, filtros);
 
   // Obtener reservas con relaciones necesarias
-  const reservations = await prisma.reservation.findMany({
+  let reservations = await prisma.reservation.findMany({
     where: whereClause,
     include: {
       tour: {
@@ -33,6 +34,7 @@ async function generarReporte(
           id_tour: true,
           name: true,
           type: true,
+          duration: true,
         },
       },
       app_user: {
@@ -47,6 +49,17 @@ async function generarReporte(
       date: "desc",
     },
   });
+
+  if (
+    filtros.estado != null &&
+    filtros.estado !== "" &&
+    isLifecycleListState(filtros.estado)
+  ) {
+    reservations = filterReservationsByEffectiveState(
+      reservations as Parameters<typeof filterReservationsByEffectiveState>[0],
+      filtros.estado,
+    ) as typeof reservations;
+  }
 
   //KPIs generales
   const kpis = calcularKPIsGenerales(reservations);

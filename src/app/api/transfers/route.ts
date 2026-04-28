@@ -8,6 +8,10 @@ import {
 import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { serializeForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
+import {
+  ensureInternalSupplierExists,
+  INTERNAL_SUPPLIER_CORPORATE,
+} from "@/lib/internal-supplier";
 
 // Interface para where clause de transfer
 interface TransferWhereInput {
@@ -124,10 +128,13 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
 
     const body = await request.json();
     const validatedData = CreateTransferSchema.parse(body);
+    await ensureInternalSupplierExists(prisma);
+    const supplierCorporate =
+      validatedData.supplier_corporate ?? INTERNAL_SUPPLIER_CORPORATE;
 
     // Verificar que el supplier existe
     const supplier = await prisma.supplier.findUnique({
-      where: { corporate: validatedData.supplier_corporate },
+      where: { corporate: supplierCorporate },
       select: {
         corporate: true,
         company: true,
@@ -174,7 +181,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
         type: validatedData.type,
         base_price: validatedData.base_price,
         sale_price: validatedData.sale_price,
-        supplier_corporate: validatedData.supplier_corporate,
+        supplier_corporate: supplierCorporate,
       },
       include: {
         supplier: {

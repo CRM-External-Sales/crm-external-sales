@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedRequest } from "@/lib/auth-middleware";
 import { UpdateTransferSchema } from "@/app/schemas/transfer.schema";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
+import { ensureInternalSupplierExists } from "@/lib/internal-supplier";
 import { serializeForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 
@@ -127,6 +128,9 @@ export async function PUT(
 
       const body = await authRequest.json();
       const validatedData = UpdateTransferSchema.parse(body);
+      if (validatedData.supplier_corporate != null) {
+        await ensureInternalSupplierExists(prisma);
+      }
 
       // Si se actualiza el supplier, verificar que existe
       if (validatedData.supplier_corporate) {

@@ -306,6 +306,21 @@ export const tourService = {
     return response.data as ApiResponse<Tour>;
   },
 
+  /** Cupo del turno (misma fecha + hora): `tour.spots` fijo; usado = reservas activas en ese slot. */
+  getSlotAvailability: async (
+    tourId: string,
+    params: { date: string; time: string },
+  ): Promise<
+    ApiResponse<{ capacity: number; used: number; remaining: number }>
+  > => {
+    const response = await http.get<ApiResponse<{
+      capacity: number;
+      used: number;
+      remaining: number;
+    }>>(`/tours/${tourId}/slot-availability`, { params });
+    return response.data;
+  },
+
   // Crear nuevo tour (admin/agent)
   createTour: async (
     tourData: {
@@ -318,7 +333,8 @@ export const tourService = {
       requirements: string;
       duration: string;
       difficulty: string;
-      supplier_corporate: number;
+      /** Si se omite, el servidor asume operación interna. */
+      supplier_corporate?: number;
     },
     schedules: Array<{ weekday: string; start_time: string }>,
     images: Array<{ file: File; alt?: string; is_cover?: boolean; sort_order?: number }>
@@ -522,6 +538,105 @@ export const supplierService = {
   },
 };
 
+// Reservas
+export interface Reservation {
+  reservation_id: number;
+  employee_user: string;
+  tour_id: number;
+  hotel_reservation: number;
+  date: string;
+  time: string;
+  people: number;
+  state: "pending" | "in_progress" | "completed" | "cancelled";
+  note: string;
+  cancellation_reason?: string | null;
+  tour_amount: number;
+  transfer_amount: number;
+  subtotal: number;
+  iva: number;
+  discount: number;
+  total: number;
+  transfer_id?: number | null;
+  tour?: {
+    name: string;
+    type: string;
+    duration?: string;
+    /** Ayuda a depurar política 24/48 h; coincide con el tour en BD. */
+    supplier_corporate?: number;
+  };
+  transfer?: { license_plate: number; make: string; model: string } | null;
+  app_user?: { username: string };
+  /** Reservado para compatibilidad; siempre `null` (la anulación fuera de plazo usa reconocimiento explícito). */
+  cancel_forbidden_reason?: null;
+  is_within_cancellation_lead: boolean;
+  late_cancellation_penalty_usd: number;
+  /** Texto informativo si aplica penalidad por anular fuera del plazo mínimo. */
+  late_cancellation_notice?: string | null;
+  /** `true` si el tour usa el proveedor de operación interna (plazo 24 h). */
+  is_internal_operation: boolean;
+  /** 24, 48 o 0 (sin tour / cancelada) — horas mínimas de anticipación para anular sin penalidad. */
+  cancellation_lead_hours: number;
+}
+
+export const reservationService = {
+  createReservation: async (payload: {
+    tour_id: number;
+    transfer_id?: number;
+    /** Monto de transfer en la reserva; si no se envía con transfer, el servidor usa el precio de venta del vehículo. */
+    transfer_amount?: number;
+    hotel_reservation: number;
+    date: string;
+    time: string;
+    people: number;
+    note?: string;
+    iva_rate?: number;
+    discount?: number;
+  }): Promise<ApiResponse<Reservation>> => {
+    const response = await http.post<ApiResponse<Reservation>>(
+      "/reservations",
+      payload,
+    );
+    return response.data;
+  },
+
+  getReservations: async (params?: {
+    page?: number;
+    limit?: number;
+    date?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    state?: string;
+    transfer_id?: string;
+    q?: string;
+  }): Promise<ApiResponse<Reservation[]>> => {
+    const response = await http.get("/reservations", { params });
+    return response.data as ApiResponse<Reservation[]>;
+  },
+
+  getReservationById: async (
+    id: number,
+  ): Promise<ApiResponse<Reservation>> => {
+    const response = await http.get(`/reservations/${id}`);
+    return response.data as ApiResponse<Reservation>;
+  },
+
+  updateReservation: async (
+    id: number,
+    payload: {
+      state?: "cancelled";
+      cancellation_reason?: string | null;
+      note?: string;
+      acknowledge_late_cancellation?: boolean;
+    },
+  ): Promise<ApiResponse<Reservation>> => {
+    const response = await http.put<ApiResponse<Reservation>>(
+      `/reservations/${id}`,
+      payload,
+    );
+    return response.data;
+  },
+};
+
 // Servicios de Transfers
 export const transferService = {
   // Obtener todos los transfers (admin/agent)
@@ -548,7 +663,8 @@ export const transferService = {
   // Crear transfer (solo admin)
   createTransfer: async (transferData: {
     license_plate: number;
-    supplier_corporate: number;
+    /** Si se omite, el servidor asume operación interna. */
+    supplier_corporate?: number;
     availability: string;
     make: string;
     model: string;
@@ -585,6 +701,23 @@ export const transferService = {
   deleteTransfer: async (licensePlate: number): Promise<ApiResponse> => {
     const response = await http.delete(`/transfers/${licensePlate}`);
     return response.data as ApiResponse;
+  },
+
+  /**
+   * Matrículas con reserva activa (no cancelada) en esta fecha y hora.
+   * Un transfer no puede duplicarse en el mismo franja.
+   */
+  getSlotBusyPlates: async (params: {
+    date: string;
+    time: string;
+    /** Tour de la reserva: define duración y ventana de ocupación (servicio + colchón de retorno). */
+    tour_id: number;
+  }): Promise<ApiResponse<{ busy_license_plates: number[] }>> => {
+    const response = await http.get(
+      "/transfers/slot-availability",
+      { params },
+    );
+    return response.data as ApiResponse<{ busy_license_plates: number[] }>;
   },
 };
 

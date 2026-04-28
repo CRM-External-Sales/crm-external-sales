@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AxiosError } from "axios";
+import { isAxiosLikeError } from "@/lib/http-error";
 import * as z from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,7 +92,7 @@ export const CreateSupplierView = () => {
         setError(response.error || "No se pudo crear el proveedor.");
       }
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data) {
+      if (isAxiosLikeError(err) && err.response?.data) {
         const data = err.response.data as ApiResponse;
         setError(
           data.error ||

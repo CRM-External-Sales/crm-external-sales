@@ -6,6 +6,17 @@ import { createValidationErrorResponse } from "@/lib/error-formatter";
 // import { serializeForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Decimal } from "@/generated/prisma/runtime/library";
+import {
+  assertFitsSlotCapacity,
+  assertTransferFreeOnSlot,
+  SlotCapacityError,
+  timeHHMMToTimeDate,
+  TransferSlotConflictError,
+} from "@/lib/reservation-slot-availability";
+import {
+  enrichReservationForApiResponse,
+  getCancellationLeadStatus,
+} from "@/lib/reservation-cancellation-policy";
 
 // Función auxiliar para serializar (reutilizada, se puede mover a utils más tarde)
 function serializeReservationForJSON(obj: any): any {
@@ -68,10 +79,15 @@ export async function GET(
         where: { reservation_id: BigInt(reservationId) },
         include: {
           tour: {
-            select: { name: true, type: true }
+            select: {
+              name: true,
+              type: true,
+              duration: true,
+              supplier_corporate: true,
+            },
           },
           transfer: {
-             select: { make: true, model: true }
+            select: { license_plate: true, make: true, model: true },
           },
           app_user: {
              select: { username: true }
@@ -96,7 +112,11 @@ export async function GET(
 
       return NextResponse.json({
         success: true,
-        data: serializeReservationForJSON(reservation),
+        data: serializeReservationForJSON(
+          enrichReservationForApiResponse(
+            reservation as Parameters<typeof enrichReservationForApiResponse>[0],
+          ),
+        ),
       });
 
     } catch (error) {
@@ -128,17 +148,9 @@ export async function PUT(
         );
       }
 
-      // 1. Validar Permiso de Admin (Requisito: "permitir a los administradores gestionar reservas")
-      if (user.role !== 'admin') {
-           return NextResponse.json(
-              { success: false, error: "Solo los administradores pueden modificar reservas" },
-              { status: 403 }
-          );
-      }
-
       const existingReservation = await prisma.reservation.findUnique({
-          where: { reservation_id: BigInt(reservationId) },
-          include: { tour: true, transfer: true }
+        where: { reservation_id: BigInt(reservationId) },
+        include: { tour: true, transfer: true },
       });
 
       if (!existingReservation) {
@@ -151,8 +163,185 @@ export async function PUT(
       const json = await authRequest.json();
       const body = UpdateReservationSchema.parse(json);
 
-      // Datos para actualizar
-      const updateData: any = { ...body };
+      if (body.state === "cancelled") {
+        if (existingReservation.state === "cancelled") {
+          return NextResponse.json(
+            { success: false, error: "La reserva ya está cancelada" },
+            { status: 400 },
+          );
+        }
+        const adminMerge =
+          user.role === "admin"
+            ? {
+                tourId:
+                  body.tour_id !== undefined
+                    ? BigInt(body.tour_id)
+                    : existingReservation.tour_id,
+                date:
+                  body.date !== undefined
+                    ? new Date(body.date)
+                    : existingReservation.date,
+                time:
+                  body.time !== undefined
+                    ? timeHHMMToTimeDate(body.time)
+                    : existingReservation.time,
+              }
+            : {
+                tourId: existingReservation.tour_id,
+                date: existingReservation.date,
+                time: existingReservation.time,
+              };
+        const tourForPolicy = await prisma.tour.findUnique({
+          where: { id_tour: adminMerge.tourId },
+          select: { supplier_corporate: true },
+        });
+        if (!tourForPolicy) {
+          return NextResponse.json(
+            { success: false, error: "El tour de la reserva no existe" },
+            { status: 404 },
+          );
+        }
+        const lead = getCancellationLeadStatus({
+          dbState: existingReservation.state,
+          date: adminMerge.date,
+          time: adminMerge.time,
+          supplierCorporate: tourForPolicy.supplier_corporate,
+        });
+        if (!lead.within_lead && !body.acknowledge_late_cancellation) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "Anulación fuera del plazo mínimo: debe confirmar con acknowledge_late_cancellation: true tras informar al cliente la penalidad aplicable (el cobro se gestiona fuera de la plataforma).",
+              code: "LATE_CANCELLATION_ACK_REQUIRED",
+              late_cancellation_penalty_usd: lead.penalty_usd,
+            },
+            { status: 400 },
+          );
+        }
+      }
+
+      const isAgentOwner =
+        user.role === "agent" && existingReservation.employee_user === user.id;
+
+      if (isAgentOwner) {
+        const presentKeys = Object.entries(body)
+          .filter(([, v]) => v !== undefined)
+          .map(([k]) => k);
+        const allowed = new Set([
+          "state",
+          "cancellation_reason",
+          "note",
+          "acknowledge_late_cancellation",
+        ]);
+        if (presentKeys.length === 0) {
+          return NextResponse.json(
+            { success: false, error: "No se enviaron campos para actualizar" },
+            { status: 400 },
+          );
+        }
+        for (const k of presentKeys) {
+          if (!allowed.has(k)) {
+            return NextResponse.json(
+              {
+                success: false,
+                error:
+                  "Como agente solo puede anular la reserva (con motivo) o modificar la nota",
+              },
+              { status: 403 },
+            );
+          }
+        }
+
+        const data: {
+          state?: string;
+          cancellation_reason?: string | null;
+          note?: string;
+        } = {};
+        if (body.state === "cancelled") {
+          data.state = "cancelled";
+        }
+        if (body.cancellation_reason !== undefined) {
+          data.cancellation_reason = body.cancellation_reason;
+        }
+        if (body.note !== undefined) {
+          data.note = body.note;
+        }
+
+        const finalStateForAgent =
+          body.state === "cancelled"
+            ? "cancelled"
+            : existingReservation.state;
+
+        const updatedAsAgent = await prisma.$transaction(async (tx) => {
+          if (finalStateForAgent !== "cancelled") {
+            const t = await tx.tour.findUnique({
+              where: { id_tour: existingReservation.tour_id },
+            });
+            if (!t) {
+              throw new Error("TOUR_NOT_FOUND");
+            }
+            await assertFitsSlotCapacity(tx, {
+              tourSpots: t.spots,
+              tourId: existingReservation.tour_id,
+              date: existingReservation.date,
+              time: existingReservation.time,
+              people: existingReservation.people,
+              excludeReservationId: existingReservation.reservation_id,
+            });
+            if (existingReservation.transfer_id) {
+              await assertTransferFreeOnSlot(tx, {
+                transferId: existingReservation.transfer_id,
+                date: existingReservation.date,
+                time: existingReservation.time,
+                tourDuration: t.duration,
+                excludeReservationId: existingReservation.reservation_id,
+              });
+            }
+          }
+
+          return tx.reservation.update({
+            where: { reservation_id: BigInt(reservationId) },
+            data,
+            include: {
+              tour: {
+                select: {
+                  name: true,
+                  type: true,
+                  duration: true,
+                  supplier_corporate: true,
+                },
+              },
+              transfer: { select: { license_plate: true, make: true, model: true } },
+              app_user: { select: { username: true } },
+            },
+          });
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: "Reserva actualizada exitosamente",
+          data: serializeReservationForJSON(
+            enrichReservationForApiResponse(
+              updatedAsAgent as Parameters<typeof enrichReservationForApiResponse>[0],
+            ),
+          ),
+        });
+      }
+
+      if (user.role !== "admin") {
+        return NextResponse.json(
+          { success: false, error: "Solo un administrador puede modificar reservas" },
+          { status: 403 },
+        );
+      }
+
+      // El estado vive en BD solo como cancelación; el resto es calculado al leer.
+      const updateData: Record<string, unknown> = { ...body };
+      delete updateData.acknowledge_late_cancellation;
+      if (body.state == null) {
+        delete updateData.state;
+      }
       
       // Recalcular montos si cambia tour, personas o transfer
       // Si cambiamos el tour, necesitamos un nuevo precio base.
@@ -228,25 +417,124 @@ export async function PUT(
           }
       }
 
-      const updatedReservation = await prisma.reservation.update({
-          where: { reservation_id: BigInt(reservationId) },
-          data: updateData,
-          include: {
-            tour: { select: { name: true, type: true } },
-            transfer: { select: { make: true, model: true } },
-            app_user: { select: { username: true } }
+      const mergedStateForAdmin =
+        body.state === "cancelled" ? "cancelled" : existingReservation.state;
+      const mergedPeople =
+        body.people !== undefined ? body.people : existingReservation.people;
+      const mergedDate = body.date !== undefined
+        ? new Date(body.date)
+        : existingReservation.date;
+      const mergedTime =
+        body.time !== undefined
+          ? timeHHMMToTimeDate(body.time)
+          : existingReservation.time;
+      const mergedTourId =
+        body.tour_id !== undefined
+          ? BigInt(body.tour_id)
+          : existingReservation.tour_id;
+
+      const mergedTransferId: bigint | null =
+        body.transfer_id === undefined
+          ? existingReservation.transfer_id
+          : body.transfer_id == null
+            ? null
+            : BigInt(body.transfer_id);
+
+      const updatedReservation = await prisma.$transaction(async (tx) => {
+        if (mergedStateForAdmin !== "cancelled") {
+          const t = await tx.tour.findUnique({ where: { id_tour: mergedTourId } });
+          if (!t) {
+            throw new Error("TOUR_NOT_FOUND");
           }
+          await assertFitsSlotCapacity(tx, {
+            tourSpots: t.spots,
+            tourId: mergedTourId,
+            date: mergedDate,
+            time: mergedTime,
+            people: mergedPeople,
+            excludeReservationId: existingReservation.reservation_id,
+          });
+          if (mergedTransferId) {
+            const trRow = await tx.transfer.findUnique({
+              where: { license_plate: mergedTransferId },
+            });
+            if (!trRow) {
+              throw new Error("TRANSFER_NOT_FOUND");
+            }
+            if (Number(trRow.capacity) < mergedPeople) {
+              throw new Error("TRANSFER_CAPACITY_INSUFFICIENT");
+            }
+            await assertTransferFreeOnSlot(tx, {
+              transferId: mergedTransferId,
+              date: mergedDate,
+              time: mergedTime,
+              tourDuration: t.duration,
+              excludeReservationId: existingReservation.reservation_id,
+            });
+          }
+        }
+
+        return tx.reservation.update({
+          where: { reservation_id: BigInt(reservationId) },
+          data: updateData as any,
+          include: {
+            tour: {
+              select: {
+                name: true,
+                type: true,
+                duration: true,
+                supplier_corporate: true,
+              },
+            },
+            transfer: { select: { license_plate: true, make: true, model: true } },
+            app_user: { select: { username: true } },
+          },
+        });
       });
 
       return NextResponse.json({
         success: true,
         message: "Reserva actualizada exitosamente",
-        data: serializeReservationForJSON(updatedReservation),
+        data: serializeReservationForJSON(
+          enrichReservationForApiResponse(
+            updatedReservation as Parameters<typeof enrichReservationForApiResponse>[0],
+          ),
+        ),
       });
 
     } catch (error) {
       if (error instanceof ZodError) {
         return NextResponse.json(createValidationErrorResponse(error), { status: 400 });
+      }
+      if (error instanceof SlotCapacityError) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+      }
+      if (error instanceof TransferSlotConflictError) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+      }
+      if (error instanceof Error) {
+        if (error.message === "TOUR_NOT_FOUND") {
+          return NextResponse.json(
+            { success: false, error: "El tour de la reserva no existe" },
+            { status: 404 },
+          );
+        }
+        if (error.message === "TRANSFER_NOT_FOUND") {
+          return NextResponse.json(
+            { success: false, error: "El transfer indicado no existe" },
+            { status: 404 },
+          );
+        }
+        if (error.message === "TRANSFER_CAPACITY_INSUFFICIENT") {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "La capacidad del transfer es insuficiente para la cantidad de personas",
+            },
+            { status: 400 },
+          );
+        }
       }
 
       console.error("Error updating reservation:", error);

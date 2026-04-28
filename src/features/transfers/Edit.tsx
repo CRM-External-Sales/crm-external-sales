@@ -22,7 +22,8 @@ import {
 } from "@/app/schemas/transfer.schema";
 import { transferService, supplierService, type ApiResponse, type Transfer, type Supplier } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AxiosError } from "axios";
+import { isAxiosLikeError } from "@/lib/http-error";
+import { INTERNAL_SUPPLIER_CORPORATE } from "@/lib/internal-supplier";
 
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,14 +38,18 @@ interface EditTransferViewProps {
 }
 
 function transferToFormState(transfer: Transfer): UpdateTransferFormValues {
-  const corporate =
-    transfer.supplier_corporate ?? transfer.supplier?.corporate ?? 0;
+  const corporate = Number(
+    transfer.supplier_corporate ?? transfer.supplier?.corporate ?? 0,
+  );
   return {
     make: transfer.make ?? "",
     model: transfer.model ?? "",
     category: transfer.category ?? "",
     capacity: transfer.capacity != null ? String(transfer.capacity) : "",
-    supplier_corporate: corporate ? String(corporate) : "",
+    supplier_corporate:
+      corporate && corporate !== INTERNAL_SUPPLIER_CORPORATE
+        ? String(corporate)
+        : "",
     availability: transfer.availability ?? "",
     type: transfer.type ?? "",
     base_price:
@@ -135,7 +140,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
         setDeleteError(response.error || "No se pudo eliminar el transfer.");
       }
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data) {
+      if (isAxiosLikeError(err) && err.response?.data) {
         const data = err.response.data as ApiResponse & { details?: string };
         const status = err.response.status;
 
@@ -183,7 +188,8 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
         type: data.type,
         base_price: data.base_price,
         sale_price: data.sale_price,
-        supplier_corporate: data.supplier_corporate,
+        supplier_corporate:
+          data.supplier_corporate ?? INTERNAL_SUPPLIER_CORPORATE,
       });
 
       if (response.success && response.data) {
@@ -198,7 +204,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
         setServerError(response.error || response.message || "No se pudo actualizar el transfer.");
       }
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data) {
+      if (isAxiosLikeError(err) && err.response?.data) {
         const data = err.response.data as ApiResponse;
         setServerError(
           data.message ||
@@ -338,7 +344,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
               <div className="space-y-5">
                 {/* Proveedor */}
                 <div className="space-y-2">
-                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
+                  <Label htmlFor="supplier_corporate" className="text-[#4A4A4A] font-semibold">
                     Proveedor
                   </Label>
                   <select
@@ -354,7 +360,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                     <option value="">
                       {loadingSuppliers
                         ? "Cargando proveedores..."
-                        : "Seleccionar el proveedor del transfer"}
+                        : "Operación interna (sin proveedor externo)"}
                     </option>
                     {suppliers.map((supplier) => (
                       <option key={supplier.corporate} value={supplier.corporate.toString()}>
@@ -362,6 +368,9 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs text-muted-foreground">
+                    Valor por defecto: operación interna.
+                  </p>
                   {errors.supplier_corporate && (
                     <p className="text-sm text-destructive">{errors.supplier_corporate.message}</p>
                   )}

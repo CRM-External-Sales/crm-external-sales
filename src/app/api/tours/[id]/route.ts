@@ -6,6 +6,7 @@ import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { serializeForJSON, serializeTourForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
+import { ensureInternalSupplierExists } from "@/lib/internal-supplier";
 
 // GET /api/tours/:id - Obtener un tour por ID con sus imágenes
 export async function GET(
@@ -135,6 +136,9 @@ export async function PUT(
 
       const body = await authRequest.json();
       const validatedData = UpdateTourSchema.parse(body);
+      if (validatedData.supplier_corporate != null) {
+        await ensureInternalSupplierExists(prisma);
+      }
 
       // Si se actualiza el supplier, verificar que existe
       if (validatedData.supplier_corporate) {

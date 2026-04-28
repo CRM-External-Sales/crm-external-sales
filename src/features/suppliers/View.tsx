@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AxiosError } from "axios";
+import { isAxiosLikeError } from "@/lib/http-error";
 import * as z from "zod";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { supplierService, type Supplier, type ApiResponse } from "@/lib/api";
@@ -149,7 +149,7 @@ export const View = () => {
     } catch (err) {
       setSingleSupplier(null);
       // Si es 404, tratarlo como "no encontrado"
-      if (err instanceof AxiosError) {
+      if (isAxiosLikeError(err)) {
         if (err.response?.status === 404) {
           setSearchError(null);
           return;
@@ -268,7 +268,7 @@ export const View = () => {
         setDeleteError(response.error || "No se pudo eliminar el proveedor");
       }
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data) {
+      if (isAxiosLikeError(err) && err.response?.data) {
         const data = err.response.data as ApiResponse & { details?: string };
         const status = err.response.status;
 

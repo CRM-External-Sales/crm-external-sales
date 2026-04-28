@@ -1,5 +1,7 @@
 # CRM External Sales - Sistema de Gestión Completo
 
+> **Actualización (documentación, abril 2026):** se describen los **estados lógicos** de reservas, la **política de cancelación** (plazos 48 h / 24 h, penalidad informativa fuera de plazo y `acknowledge_late_cancellation` en `PUT`), campos `is_within_cancellation_lead` / `late_cancellation_*`, el endpoint **`GET /api/transfers/slot-availability`**, las utilidades `reservation-lifecycle` y `reservation-cancellation-policy`, y el **contrato `PUT` de reservas** (anulación vía `state: "cancelled"`). Incluye notas de **UI/Front** (listado, detalle, crear reserva) y de **formato** del código (Prettier, orden de imports).
+
 ## 🚀 Endpoints Implementados
 
 He creado un sistema completo de gestión para tu CRM que incluye usuarios, tours y transfers. Los siguientes endpoints están implementados:
@@ -48,6 +50,10 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `PUT /api/tours/:id/schedules/:scheduleId` - Actualizar horario (solo admin)
 - `DELETE /api/tours/:id/schedules/:scheduleId` - Eliminar horario (solo admin)
 
+#### 🎫 Cupos por franja (misma fecha y hora de salida)
+
+- `GET /api/tours/:id/slot-availability?date=YYYY-MM-DD&time=HH:MM` — Responde `capacity` (igual a `tour.spots` en el catálogo, **fijo**), `used` (suma de `people` en reservas **no canceladas** con ese `tour_id`, `date` y `time`) y `remaining`. Requiere autenticación. La misma lógica valida el **POST** y el **PUT** de reservas: **no** se modifica `tour.spots` al crear, editar o cancelar.
+
 #### 📤 Subida de Archivos
 
 - `POST /api/upload` - Subir imagen local a Supabase Storage (solo admin)
@@ -58,6 +64,7 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `POST /api/transfers` - Crear nuevo transfer (solo admin)
 - `PUT /api/transfers/:id` - Actualizar transfer existente (solo admin)
 - `DELETE /api/transfers/:id` - Eliminar transfer (solo admin)
+- `GET /api/transfers/slot-availability?date=YYYY-MM-DD&time=HH:MM&tour_id=…` - Matrículas **no disponibles** para una reserva propuesta: solape temporal con otra reserva activa usando transfer, con ventana de ocupación = **inicio** → **fin del servicio (según `tour.duration`)** + colchón de retorno/movilidad (por defecto **2 h**, `TRANSFER_POST_SERVICE_BUFFER_HOURS`). Misma lógica que al guardar el transfer en **POST/PUT** reservas.
 
 ### 🏢 Gestión de Proveedores (Suppliers)
 
@@ -69,16 +76,56 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 
 ### 📅 Gestión de Reservas
 
-- `POST /api/reservations` - Crear nueva reserva (Agent y Admin). Calcula automáticamente totales del tour y del transfer.
-- `GET /api/reservations` - Listar reservas con filtros:
-  - `date`: Fecha específica (ISO o YYYY-MM-DD)
-  - `state`: Estado de la reserva (e.g. pending, confirmed)
-  - Nota: Admin ve todas; agentes solo las propias.
-- `GET /api/reservations/:id` - Obtener reserva por ID (Admin o propietario)
-- `PUT /api/reservations/:id` - Actualizar/Cancelar reserva (Solo Admin):
-  - Permite modificar: `people`, `tour_id`, `transfer_id`, `date`, `time`, `hotel_reservation`, `note`, `state`.
-  - Recalcula montos si cambian `tour_id`, `people` o `transfer_id`.
-  - Al cancelar (`state: "cancelled"`), se requiere `cancellation_reason`.
+- `POST /api/reservations` - Crear reserva (rol **agent** o **admin**). Calcula `tour_amount`, `transfer_amount`, `subtotal`, `iva`, `total` a partir de `tour` y `transfer`. Cuerpo validado con `CreateReservationSchema` (`tour_id`, `people`, `date` ISO 8601, `time` en `HH:MM`, `hotel_reservation`, `note`, `transfer_id` opcional, `iva_rate` por defecto 0.13, `discount` por defecto 0).
+  - **Cupo por franja (fecha + hora de salida):** no se modifica `tour.spots` al guardar. Se exige que la suma de `people` de las reservas **no canceladas** con el mismo `tour_id`, `date` y `time` más la nueva reserva no supere `tour.spots` (errores **400** con mensaje de cupo, p. ej. `SlotCapacityError`).
+- `GET /api/reservations` - Listar con filtros (`date`, rango `dateFrom`/`dateTo`, `state`, `transfer_id`, búsqueda `q`, paginación). El **admin** ve todas; los **agentes** solo sus reservas.
+- `GET /api/reservations/:id` - Detalle (admin o dueño de la reserva).
+- `PUT /api/reservations/:id` - **Admin:** puede modificar `people`, `tour_id`, `transfer_id`, `date`, `time`, `hotel_reservation`, `note` y recalcula montos según corresponda; además **solo** puede fijar `state` a cancelación: `state: "cancelled"` (con `cancellation_reason` obligatorio vía `UpdateReservationSchema`). No se acepta otro `state` en el cuerpo. Valida franja al guardar salvo que se esté **cancelando** (al sumar cupo, excluye la fila actual). **Agente (dueño):** solo anulación con motivo (`state: "cancelled"` + `cancellation_reason`) o `note` (sin tocar `tour_id`, `date`, `people`, etc.).
+
+#### Estados de reserva (respuesta JSON) — cálculo automático
+
+En **todas** las respuestas donde se devuelve una reserva, el campo `state` es el **estado lógico** (no hace falta fijar manual `pending` / `in_progress` / `completed`):
+
+| Valor            | Criterio |
+|------------------|----------|
+| `cancelled`      | Reserva persistida como cancelada en BD. |
+| `pending`        | No cancelada y el instante actual es **anterior** al inicio del turno. |
+| `in_progress`    | No cancelada, ya comenzó el turno y aún no termina el intervalo (inicio + duración derivada de `tour.duration`; ver `src/lib/reservation-lifecycle.ts`). |
+| `completed`      | No cancelada e instante actual ≥ fin del intervalo del turno. |
+
+**Hora de inicio del turno (importante):** el día sale de `date` (como en API) y la hora del selector (`time` en HH:MM) se interpreta como **hora local de operación**, no como UTC puro. Por defecto se usa **UTC−6** (Costa Rica, sin horario de verano). Variable de entorno opcional: `RESERVATION_UTC_OFFSET_HOURS` (número entero entre -12 y 14; por defecto `-6`). Así “10:25” coincide con la mañana local y el estado **en curso** no pasa a **completada** mientras no termine la ventana (inicio + duración del tour).
+
+En BD el campo almacenado distingue básicamente “cancelada” frente a “no cancelada”; el resto se **calcula** al serializar. Los filtros `?state=pending|in_progress|completed|cancelled` se aplican según esos criterios (para los tres primeros, la capa de listado aplica el cálculo sobre las filas no canceladas).
+
+#### Política de cancelación (anticipación mínima y anulación fuera de plazo)
+
+Se mide el tiempo restante hasta el **inicio del servicio** (mismo `date`+`time` de la reserva) frente al **tour** vigente:
+
+- **Operación externa** (`tour.supplier_corporate` distinto al interno: `INTERNAL_SUPPLIER_CORPORATE` en `src/lib/internal-supplier.ts`): plazo mínimo **48 horas**.
+- **Operación interna:** plazo mínimo **24 horas**.
+
+- **Dentro del plazo:** `PUT` con `state: "cancelled"`, `cancellation_reason` y sin requisito extra.
+- **Fuera del plazo (interna o externa):** aplica el mismo criterio de penalidad informativa: si faltan menos de **24 h** (tour de operación interna) o menos de **48 h** (operación externa) hasta el inicio, se anula con `acknowledge_late_cancellation: true` y el monto in `late_cancellation_penalty_usd` (default **20** USD, `LATE_CANCELLATION_PENALTY_USD`). Si falta el reconocimiento, **400** con `code: "LATE_CANCELLATION_ACK_REQUIRED"`.
+
+Lógica: `src/lib/reservation-cancellation-policy.ts`.
+
+#### Campos adicionales en respuestas (política de anulación)
+
+En **GET** listado, **GET** por id y en **PUT/POST** de reservas, cada ítem incluye:
+
+- `is_within_cancellation_lead: boolean` — si queda al menos el plazo mínimo (o la fila no aplica, p. ej. sin tour o ya cancelada en BD).
+- `is_internal_operation: boolean` — `true` si `tour.supplier_corporate` corresponde al proveedor de operación interna (`INTERNAL_SUPPLIER_CORPORATE` en `internal-supplier.ts`). La comparación en servidor acepta `BigInt` / `number` / `string` para no clasificar mal el tour.
+- `cancellation_lead_hours: number` — **24** (interna), **48** (externa) o **0** si no aplica; plazo mínimo de anticipación para anular sin penalidad informativa.
+- `late_cancellation_penalty_usd: number` — monto informativo de penalidad (0 si está dentro de plazo).
+- `late_cancellation_notice: string | null` — texto informativo si aplica penalidad; la UI lo usa en el flujo de cancelar.
+- `cancel_forbidden_reason: null` — reservado para compatibilidad; ya no indica bloqueo de anulación.
+
+#### Cambios recientes documentados (reservas)
+
+- Estados efectivos y duración a partir de `tour.duration` (mapeo por categoría de duración en catálogo).
+- Filtro de listado por `in_progress` y coherencia con estados lógicos.
+- Restricción de **PUT** a cancelación manifiesta (`state` solo `cancelled`) frente a edición de otros “estados” manuales.
+- Reportes: agregación “por estado” y filtros con `estado` usan el mismo criterio de estado efectivo cuando aplica; ver `construirWhereClause` y `agregarReservasPorEstado` en el código.
 
 ### 🛠️ Herramientas de Desarrollo
 
@@ -118,6 +165,7 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 - `src/app/api/tours/[id]/images/[imageId]/route.ts` (PUT y DELETE de imágenes)
 - `src/app/api/tours/[id]/schedules/route.ts` (GET y POST de horarios)
 - `src/app/api/tours/[id]/schedules/[scheduleId]/route.ts` (PUT y DELETE de horarios)
+- `src/app/api/tours/[id]/slot-availability/route.ts` (GET — cupo usado y libre por `date` + `time`)
 
 **Upload:**
 - `src/app/api/upload/route.ts` (POST para subir imágenes)
@@ -125,14 +173,15 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 **Transfers:**
 - `src/app/api/transfers/route.ts` (GET y POST)
 - `src/app/api/transfers/[id]/route.ts` (PUT y DELETE)
+- `src/app/api/transfers/slot-availability/route.ts` (GET — matrículas ocupadas en una franja)
 
 **Proveedores:**
 - `src/app/api/suppliers/route.ts` (GET - listar; POST - crear)
 - `src/app/api/suppliers/[corporate]/route.ts` (GET - obtener; PUT - actualizar; DELETE - eliminar)
 
 **Reservas:**
-- `src/app/api/reservations/route.ts` (GET - listar; POST - crear con cálculo automático)
-- `src/app/api/reservations/[id]/route.ts` (GET - obtener por ID; PUT - actualizar/cancelar)
+- `src/app/api/reservations/route.ts` (GET — listar; POST — crear con montos, `iva_rate`/`discount` y validación de **cupo por franja** sin mutar `tour.spots`)
+- `src/app/api/reservations/[id]/route.ts` (GET — por ID; PUT — admin o agente dueño, con reglas de franja y motivo de cancelación)
 
 **Reportes:**
 - `src/app/api/reports/route.ts` (GET - generar reportes con métricas; solo admin)
@@ -143,7 +192,11 @@ He creado un sistema completo de gestión para tu CRM que incluye usuarios, tour
 ### Middleware y Utilidades
 
 - `src/lib/auth-middleware.ts` - Middleware de autenticación mejorado
-- `src/lib/api.ts` - Cliente Axios con servicios de API
+- `src/lib/reservation-slot-availability.ts` - Suma de personas por franja (tour + fecha + hora) y comprobación frente a `tour.spots`; ventana de ocupación de **transfer** (servicio + colchón de retorno) y solapamiento entre reservas
+- `src/lib/reservation-lifecycle.ts` - Inicio de turno, fin aproximado a partir de `tour.duration`, estados lógicos `pending` / `in_progress` / `completed` para API
+- `src/lib/reservation-cancellation-policy.ts` - Plazos mínimos 48 h / 24 h, penalidad informativa fuera de plazo, campos en respuestas y validación de `acknowledge_late_cancellation` en `PUT` al cancelar
+- `src/lib/internal-supplier.ts` - Cédula corporativa fija de “operación interna” (tours/transfers y política de cancelación)
+- `src/lib/api.ts` - Cliente Axios (`tourService.getSlotAvailability`, `reservationService`, etc.)
 - `src/hooks/useAuth.ts` - Hooks de React para autenticación
 
 ## ⚙️ Configuración Requerida
@@ -165,6 +218,11 @@ SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 # API
 NEXT_PUBLIC_API_URL="http://localhost:3000/api"
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+
+# Reservas (opcional) — penalidad informativa USD al anular fuera del plazo mínimo (default 20)
+# LATE_CANCELLATION_PENALTY_USD=20
+# Tras el fin lógico del servicio (duración del tour), horas adicionales en que el transfer sigue contando como ocupado (retorno; default 2)
+# TRANSFER_POST_SERVICE_BUFFER_HOURS=2
 ```
 
 ### 2. Regenerar Cliente de Prisma
@@ -252,11 +310,13 @@ npx prisma db push
 
 ### ✅ Gestión de Reservas
 
-- Creación de reservas con cálculo automático de precios
-- Integración de Tours y Transfers en una sola reserva
-- Validación de disponibilidad y existencia de servicios
-- Cálculo automático de IVA y totales
-- Protección por roles (Agent/Admin)
+- Creación con cálculo de precios, IVA y descuento (`iva_rate`, `discount` en el cuerpo del POST)
+- **Cupo por franja:** el campo `tour.spots` es el máximo por **turno** (misma fecha y hora); las reservas activas se suman; **no** se descuenta el tour al crear o cancelar
+- **Estados lógicos** en JSON (`pending`, `in_progress`, `completed`, `cancelled`) según reloj y duración de catálogo; en BD destaca la cancelación
+- **Política de cancelación** 48 h (externa) / 24 h (interna); respuestas con `is_within_cancellation_lead`, `is_internal_operation`, `cancellation_lead_hours`, `late_cancellation_penalty_usd` y `late_cancellation_notice`
+- Integración de Tours y Transfers en la misma reserva; comprobación de **transfer** en franja
+- Validación de servicios; errores de cupo **400** si el turno se llena; **400** al cancelar fuera de plazo sin `acknowledge_late_cancellation: true`
+- Protección por roles; **PUT** con `state` solo para `cancelled`; listado con filtros por estado lógico
 
 ### ✅ Seguridad
 
@@ -266,7 +326,7 @@ npx prisma db push
 
 ### ✅ Utilidades Frontend
 
-- Cliente Axios configurado
+- Cliente Axios configurado; `tourService.getSlotAvailability` y `reservationService` en `api.ts`
 - Hooks de React para autenticación
 - Manejo automático de tokens
 - Utilidades para localStorage
@@ -492,6 +552,7 @@ const deleteResponse = await fetch('/api/transfers/12345', {
   method: 'DELETE',
   headers: { 'Authorization': `Bearer ${token}` }
 });
+```
 
 ### Ejemplos de Uso para Reservas
 
@@ -500,11 +561,13 @@ const deleteResponse = await fetch('/api/transfers/12345', {
 const reservationData = {
   tour_id: 1,
   people: 2,
-  date: "2023-12-25T00:00:00.000Z", // Fecha en formato ISO
-  time: "09:30", // Hora en formato HH:MM
-  hotel_reservation: 101, // Número de habitación
+  date: "2023-12-25T12:00:00.000Z", // ISO (misma convención que el formulario: mediodía UTC del día)
+  time: "09:30", // HH:MM (hora de salida del turno)
+  hotel_reservation: 101,
   note: "Cliente VIP, requiere silla de bebé",
-  transfer_id: 12345 // Opcional
+  transfer_id: 12345, // Opcional
+  iva_rate: 0.13,
+  discount: 0,
 };
 
 const createReservationResponse = await fetch('/api/reservations', {
@@ -519,10 +582,17 @@ const createReservationResponse = await fetch('/api/reservations', {
 const result = await createReservationResponse.json();
 if (result.success) {
   console.log("Reserva creada:", result.data);
-  // data incluye: tour_amount, transfer_amount, subtotal, iva, total
+  // data: tour_amount, transfer_amount, subtotal, iva, total, state (lógico), is_within_cancellation_lead, late_cancellation_*, etc.
 }
 
-// GET /api/reservations - Buscar con filtros
+// GET /api/tours/:id/slot-availability — cupo del turno antes de enviar personas
+const slot = await fetch(
+  "/api/tours/1/slot-availability?date=2023-12-25&time=09%3A30",
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+// { success, data: { capacity, used, remaining } } — capacity = tour.spots (fijo)
+
+// GET /api/reservations - Buscar con filtros (state: pending | in_progress | completed | cancelled)
 const searchResponse = await fetch('/api/reservations?date=2023-12-25&state=pending', {
   headers: { 'Authorization': `Bearer ${token}` }
 });
@@ -532,7 +602,8 @@ const getById = await fetch('/api/reservations/1', {
   headers: { 'Authorization': `Bearer ${token}` }
 });
 
-// PUT /api/reservations/[id] - Actualizar/Cancelar reserva
+// PUT /api/reservations/[id] - Admin: actualizar datos o cancelar. Agente: solo nota o cancelar.
+// Edición de montos / tour / fechas (solo admin):
 const updateResponse = await fetch('/api/reservations/1', {
   method: 'PUT',
   headers: {
@@ -540,12 +611,12 @@ const updateResponse = await fetch('/api/reservations/1', {
     'Authorization': `Bearer ${token}`
   },
   body: JSON.stringify({
-    people: 3, // Actualiza cantidad (recalcula totales)
+    people: 3,
     note: "Cliente agregó una persona más"
   })
 });
 
-// Cancelar reserva
+// Cancelar (admin o agente dueño; motivo obligatorio). Fuera del plazo 48h/24h, añadir acknowledge:
 const cancelResponse = await fetch('/api/reservations/1', {
   method: 'PUT',
   headers: {
@@ -554,9 +625,11 @@ const cancelResponse = await fetch('/api/reservations/1', {
   },
   body: JSON.stringify({
     state: "cancelled",
-    cancellation_reason: "Cliente canceló por clima"
+    cancellation_reason: "Cliente canceló por clima",
+    // acknowledge_late_cancellation: true  // si GET indica is_within_cancellation_lead: false
   })
 });
+// Respuesta: data.state "cancelled"; is_within_cancellation_lead en futuras lecturas según corresponda
 ```
 ### Ejemplos de Uso para Proveedores
 
@@ -858,3 +931,17 @@ El formulario de edición integra en una sola pantalla:
 2. Llama a `PUT /api/tours/:id` con los datos base
 3. Si hay imágenes pendientes, las sube con `POST /api/tours/:id/images`
 4. Muestra alerta de éxito y vuelve al listado
+
+---
+
+## 📅 Reservas — notas de UI (actualizado)
+
+- **Crear (`/reservas/crear`, `Create.tsx`):** selección de tour, **fecha** (`YYYY-MM-DD`) y **hora** alineadas con `tour_schedule` (no se usa un único `schedule_id` fijo: la API recibe `date` ISO + `time` `HH:MM`). Antes de fijar personas, el front puede consultar `GET /api/tours/:id/slot-availability?date=…&time=…` o usar `tourService.getSlotAvailability` para mostrar *espacios restantes* y acotar `people`. `tour.spots` en catálogo = cupo por turno, sin cambiar al reservar. Texto de cupo bajo el input de personas; sin pie duplicado de precio en esa sección.
+- **Listado (`/reservas`, `View.tsx`):** filtro de estado con **Pendiente / En curso / Completada / Cancelada** (coherente con el `state` devuelto por la API). Menú *Cancelar* deshabilitado en estado final; si aplica penalidad por plazo, aviso y casilla de confirmación antes del motivo. `PUT` con `acknowledge_late_cancellation` cuando el servicio inicia en menos de 48/24 h.
+- **Detalle (`/reservas/[id]`, `Detail.tsx`):** el **estado** mostrado es el calculado por la API; se edita **nota** y la **anulación** va por flujo dedicado. Política 48/24 h; aviso informativo de penalidad y confirmación en el flujo. Formato de código: imports ordenados, Prettier (`.prettierrc` en el repo) en módulos de reservas/tours.
+
+## 📝 Documentación y formato (cambios recientes en el repo)
+
+- `ENDPOINTS_README.md` (este archivo) actualizado con estados lógicos, anulación con reconocimiento de penalidad, política 48/24 h y `GET /api/transfers/slot-availability`.
+- Módulos de ayuda: `reservation-lifecycle.ts`, `reservation-cancellation-policy.ts`.
+- **Tours/Reservas (front):** formateo Prettier y orden de imports en `src/features/tours/*`, `src/features/reservations/*` y páginas bajo `src/app/tours` y `src/app/reservas`.

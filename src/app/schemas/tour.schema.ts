@@ -24,10 +24,8 @@ export const CreateTourSchema = z.object({
   requirements: z.string().min(1, "Los requisitos son requeridos"),
   duration: z.string().min(1, "La duración es requerida"),
   difficulty: z.string().min(1, "La dificultad es requerida"),
-  supplier_corporate: z
-    .number()
-    .int()
-    .positive("El proveedor es requerido"),
+  /** Si se omite, en API se asume proveedor de operación interna. */
+  supplier_corporate: z.number().int().positive().optional(),
 });
 
 // Esquema para actualizar un schedule de tour

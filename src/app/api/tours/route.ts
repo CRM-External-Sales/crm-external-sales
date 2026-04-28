@@ -15,6 +15,10 @@ import { serializeForJSON, serializeTourForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
 import { randomUUID } from "crypto";
+import {
+  ensureInternalSupplierExists,
+  INTERNAL_SUPPLIER_CORPORATE,
+} from "@/lib/internal-supplier";
 
 // Interface para where clause de tour
 interface TourWhereInput {
@@ -173,10 +177,13 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
     }
 
     const validatedData = CreateTourSchema.parse(tourData);
+    await ensureInternalSupplierExists(prisma);
+    const supplierCorporate =
+      validatedData.supplier_corporate ?? INTERNAL_SUPPLIER_CORPORATE;
 
     // 2. Validar supplier
     const supplier = await prisma.supplier.findUnique({
-      where: { corporate: validatedData.supplier_corporate },
+      where: { corporate: supplierCorporate },
       select: {
         corporate: true,
         company: true,
@@ -254,7 +261,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
         requirements: validatedData.requirements,
         duration: validatedData.duration,
         difficulty: validatedData.difficulty,
-        supplier_corporate: validatedData.supplier_corporate,
+        supplier_corporate: supplierCorporate,
       },
       select: {
         id_tour: true,

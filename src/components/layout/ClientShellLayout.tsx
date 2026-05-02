@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Eye, EyeOff, Globe, ChevronDown, CircleUserRound } from "lucide-react";
+import { Eye, EyeOff, CircleUserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +17,10 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/lib/api";
-import { copy } from "@/features/client-home/copy";
-import { useClientLocale } from "@/features/client-home/useClientLocale";
 
 const CLIENT_SURFACE = "#F5F2EC";
+
+type LogoutStep = "confirm" | "credentials";
 
 type ClientShellLayoutProps = {
   children: React.ReactNode;
@@ -34,10 +34,9 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const { locale } = useClientLocale();
-  const t = copy[locale];
   const isHome = pathname === "/home";
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [logoutStep, setLogoutStep] = useState<LogoutStep>("confirm");
   const [logoutEmail, setLogoutEmail] = useState("");
   const [logoutPassword, setLogoutPassword] = useState("");
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -47,13 +46,21 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
   const openLogoutDialog = () => {
     setLogoutError(null);
     setLogoutPassword("");
-    setLogoutEmail(user?.email?.trim() ?? "");
+    setLogoutStep("confirm");
     setLogoutOpen(true);
+  };
+
+  const goToLogoutCredentials = () => {
+    setLogoutError(null);
+    setLogoutPassword("");
+    setLogoutEmail(user?.email?.trim() ?? "");
+    setLogoutStep("credentials");
   };
 
   const closeLogoutDialog = (open: boolean) => {
     setLogoutOpen(open);
     if (!open) {
+      setLogoutStep("confirm");
       setLogoutPassword("");
       setLogoutError(null);
       setLogoutSubmitting(false);
@@ -125,11 +132,6 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="flex h-10 items-center gap-2 rounded-xl px-3 text-white transition-colors hover:bg-white/5 hover:text-neutral-200">
-              <Globe className="size-[1.4rem]" strokeWidth={1.5} />
-              <span className="text-sm font-medium">{t.language}</span>
-              <ChevronDown className="size-4 opacity-80" />
-            </button>
             <button
               onClick={openLogoutDialog}
               className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5 hover:text-neutral-200"
@@ -148,17 +150,43 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
           className="border-neutral-200 sm:max-w-md"
           style={{ backgroundColor: CLIENT_SURFACE }}
         >
-          <form onSubmit={handleConfirmLogout}>
-            <DialogHeader>
-              <DialogTitle>Cerrar sesión</DialogTitle>
-              <DialogDescription>
-                Para salir, confirma el correo y la contraseña de la cuenta.
-              </DialogDescription>
-            </DialogHeader>
+          {logoutStep === "confirm" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Cerrar sesión</DialogTitle>
+                <DialogDescription>
+                  ¿Deseas salir de la sesión?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => closeLogoutDialog(false)}
+                >
+                  No, volver
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-[#4A6741] hover:bg-[#3d5636]"
+                  onClick={goToLogoutCredentials}
+                >
+                  Sí, continuar
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <form onSubmit={handleConfirmLogout}>
+              <DialogHeader>
+                <DialogTitle>Confirmar cierre de sesión</DialogTitle>
+                <DialogDescription>
+                  Para salir, confirma el correo y la contraseña de la cuenta.
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="client-logout-email">Correo</Label>
+              <div className="grid gap-4 py-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="client-logout-email">Correo</Label>
                   <Input
                     id="client-logout-email"
                     type="email"
@@ -169,61 +197,62 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
                     style={{ backgroundColor: CLIENT_SURFACE }}
                     disabled={logoutSubmitting}
                   />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="client-logout-password">Contraseña</Label>
-                <div className="relative">
-                  <Input
-                    id="client-logout-password"
-                    type={showLogoutPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    value={logoutPassword}
-                    onChange={(ev) => setLogoutPassword(ev.target.value)}
-                    className="border-neutral-200 pr-10"
-                    style={{ backgroundColor: CLIENT_SURFACE }}
-                    disabled={logoutSubmitting}
-                  />
-                  <button
-                    type="button"
-                    aria-label={
-                      showLogoutPassword
-                        ? "Ocultar contraseña"
-                        : "Mostrar contraseña"
-                    }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-neutral-600 hover:bg-neutral-100"
-                    onClick={() => setShowLogoutPassword((v) => !v)}
-                  >
-                    {showLogoutPassword ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </button>
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="client-logout-password">Contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="client-logout-password"
+                      type={showLogoutPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={logoutPassword}
+                      onChange={(ev) => setLogoutPassword(ev.target.value)}
+                      className="border-neutral-200 pr-10"
+                      style={{ backgroundColor: CLIENT_SURFACE }}
+                      disabled={logoutSubmitting}
+                    />
+                    <button
+                      type="button"
+                      aria-label={
+                        showLogoutPassword
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-neutral-600 hover:bg-neutral-100"
+                      onClick={() => setShowLogoutPassword((v) => !v)}
+                    >
+                      {showLogoutPassword ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                {logoutError ? (
+                  <p className="text-sm text-destructive">{logoutError}</p>
+                ) : null}
               </div>
-              {logoutError ? (
-                <p className="text-sm text-destructive">{logoutError}</p>
-              ) : null}
-            </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => closeLogoutDialog(false)}
-                disabled={logoutSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#4A6741] hover:bg-[#3d5636]"
-                disabled={logoutSubmitting}
-              >
-                {logoutSubmitting ? "Verificando..." : "Cerrar sesión"}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => closeLogoutDialog(false)}
+                  disabled={logoutSubmitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-[#4A6741] hover:bg-[#3d5636]"
+                  disabled={logoutSubmitting}
+                >
+                  {logoutSubmitting ? "Verificando..." : "Cerrar sesión"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

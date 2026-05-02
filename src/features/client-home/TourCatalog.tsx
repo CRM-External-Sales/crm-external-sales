@@ -2,20 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Clock, DollarSign, Home, Languages } from "lucide-react";
+import { Clock, DollarSign, Home } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { resolveTourImageUrl } from "@/lib/tour-image-url";
 import type { CatalogTour } from "./types";
-import type { HomeLocale } from "./copy";
-import { copy } from "./copy";
 import { CATALOG_SECTION_ID, clientTourDetailPath } from "./constants";
 
 const CATEGORY_CHIP_ACTIVE = "#244F48";
@@ -24,8 +16,8 @@ const CLIENT_SURFACE = "#F2F1ED";
 const CATALOG_ACTION_BUTTON_CLASS =
   "h-10 shrink-0 gap-1.5 rounded-xl border-[#607536]/25 px-4 text-[#313833] shadow-sm";
 
-function formatPrice(value: number, locale: HomeLocale) {
-  return new Intl.NumberFormat(locale === "en" ? "en-US" : "es-CR", {
+function formatPrice(value: number) {
+  return new Intl.NumberFormat("es-CR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
@@ -41,16 +33,9 @@ function pickCoverImageUrl(tour: CatalogTour): string | null {
 
 type TourCatalogProps = {
   tours: CatalogTour[];
-  locale: HomeLocale;
-  onLocaleChange?: (locale: HomeLocale) => void;
 };
 
-export function TourCatalog({
-  tours,
-  locale,
-  onLocaleChange,
-}: TourCatalogProps) {
-  const t = copy[locale];
+export function TourCatalog({ tours }: TourCatalogProps) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | "all">("all");
 
@@ -60,8 +45,8 @@ export function TourCatalog({
       const c = tour.type?.trim();
       if (c) set.add(c);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, locale));
-  }, [tours, locale]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+  }, [tours]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -89,35 +74,11 @@ export function TourCatalog({
             id="catalog-heading"
             className="text-2xl font-semibold tracking-tight text-[#1A1F1B] sm:text-[2rem]"
           >
-            {locale === "es" ? "Catálogo de tours" : "Tour catalog"}
+            Catálogo de tours
           </h2>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 md:justify-end">
-          {onLocaleChange ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-10 shrink-0 gap-1.5 rounded-xl border-[#313833] bg-[#313833] px-4 text-white shadow-sm hover:bg-[#1A1F1B] hover:text-white"
-                >
-                  <Languages className="size-4" aria-hidden />
-                  <span className="text-sm font-medium">{t.language}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[10rem]">
-                <DropdownMenuItem onClick={() => onLocaleChange("es")}>
-                  {t.spanish}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onLocaleChange("en")}>
-                  {t.english}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-
           <Button
             asChild
             variant="outline"
@@ -127,7 +88,7 @@ export function TourCatalog({
           >
             <Link href="/home">
               <Home className="size-4" aria-hidden />
-              {t.backToHome}
+              Volver al inicio
             </Link>
           </Button>
         </div>
@@ -142,9 +103,9 @@ export function TourCatalog({
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t.searchPlaceholder}
+            placeholder="Buscar tour por nombre"
             className="h-10 rounded-xl border-0 bg-transparent px-3 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-11"
-            aria-label={t.searchPlaceholder}
+            aria-label="Buscar tour por nombre"
           />
         </div>
 
@@ -161,7 +122,7 @@ export function TourCatalog({
                 category === "all" ? CATEGORY_CHIP_ACTIVE : CATEGORY_CHIP_DEFAULT,
             }}
           >
-            {t.allCategories}
+            Todos
           </button>
           {categories.map((c) => {
             const active = category === c;
@@ -191,9 +152,7 @@ export function TourCatalog({
             className="rounded-xl px-4 py-8 text-center text-neutral-600"
             style={{ backgroundColor: `${CLIENT_SURFACE}CC` }}
           >
-            {locale === "es"
-              ? "No hay tours que coincidan con tu búsqueda."
-              : "No tours match your filters."}
+            No hay tours que coincidan con tu búsqueda.
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -240,20 +199,19 @@ export function TourCatalog({
                           {tour.name}
                         </h3>
                         <span className="rounded-md border border-[#607536]/40 px-2 py-0.5 text-xs font-medium text-[#313833]">
-                          {tour.type?.trim() || t.categoryFallback}
+                          {tour.type?.trim() || "Categoría"}
                         </span>
                       </div>
                       <p className="flex items-center gap-2 text-sm text-neutral-600">
                         <Clock className="size-4 shrink-0 text-[#607536]" aria-hidden />
                         <span>
-                          {t.duration}: {tour.duration}
+                          Duración: {tour.duration}
                         </span>
                       </p>
                       <p className="flex items-center gap-2 text-sm text-neutral-600">
                         <DollarSign className="size-4 shrink-0 text-[#607536]" aria-hidden />
                         <span>
-                          {t.priceFrom} {formatPrice(tour.base_price, locale)}{" "}
-                          {t.dollars}
+                          Desde {formatPrice(tour.base_price)} dólares
                         </span>
                       </p>
                       <div className="mt-auto flex justify-center pt-2">
@@ -262,7 +220,7 @@ export function TourCatalog({
                           className="rounded-lg bg-[#607536] px-6 py-2 font-semibold text-white hover:bg-[#3C4A22]"
                         >
                           <Link href={clientTourDetailPath(tour.id_tour)}>
-                            {t.exploreTour}
+                            Explorar tour
                           </Link>
                         </Button>
                       </div>

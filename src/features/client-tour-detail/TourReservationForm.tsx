@@ -7,8 +7,6 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { copy, type HomeLocale } from "@/features/client-home/copy";
-import { useClientLocale } from "@/features/client-home/useClientLocale";
 import { ClientTourDetail, translateWeekday } from "./TourDetailCard";
 import { toast } from "sonner";
 
@@ -46,21 +44,20 @@ function getWeekdayFromDate(value: string) {
   return WEEKDAY_KEYS[date.getDay()] ?? null;
 }
 
-function buildReservationSchema(tour: ClientTourDetail, locale: HomeLocale) {
-  const t = copy[locale];
+function buildReservationSchema(tour: ClientTourDetail) {
   return z
     .object({
-      fullName: z.string().min(1, t.validationFullNameRequired),
+      fullName: z.string().min(1, "El nombre es requerido"),
       people: z
         .any()
         .refine(
           (value) => value !== "" && value !== undefined && value !== null,
-          t.validationPeopleRequired
+          "La cantidad de personas es requerida",
         )
         .transform((value) => Number(value))
-        .refine((value) => Number.isFinite(value), t.validationPeopleInvalid)
-        .refine((value) => value >= 1, t.validationPeopleMin),
-      date: z.string().min(1, t.validationDateRequired),
+        .refine((value) => Number.isFinite(value), "Ingrese una cantidad válida")
+        .refine((value) => value >= 1, "Mínimo 1 persona"),
+      date: z.string().min(1, "La fecha es requerida"),
       schedule: z.string().optional().default(""),
       requiresTransfer: z.enum(["yes", "no"]),
     })
@@ -69,7 +66,7 @@ function buildReservationSchema(tour: ClientTourDetail, locale: HomeLocale) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["people"],
-          message: t.validationPeopleMax.replace("{count}", String(tour.spots)),
+          message: `Máximo ${tour.spots} personas para este tour`,
         });
       }
 
@@ -78,7 +75,7 @@ function buildReservationSchema(tour: ClientTourDetail, locale: HomeLocale) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["date"],
-          message: t.validationDatePast,
+          message: "La fecha no puede ser anterior a hoy",
         });
       }
 
@@ -89,14 +86,14 @@ function buildReservationSchema(tour: ClientTourDetail, locale: HomeLocale) {
           (schedule) =>
             schedule.weekday &&
             schedule.start_time &&
-            normalizeWeekday(schedule.weekday) === selectedWeekday
+            normalizeWeekday(schedule.weekday) === selectedWeekday,
         );
 
       if (hasSchedulesForDay && !data.schedule) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["schedule"],
-          message: t.validationScheduleRequired,
+          message: "Seleccione una hora",
         });
       }
     });
@@ -123,11 +120,9 @@ type TourReservationFormProps = {
 };
 
 export function TourReservationForm({ tour }: TourReservationFormProps) {
-  const { locale } = useClientLocale();
-  const t = copy[locale];
   const reservationSchema = useMemo(
-    () => buildReservationSchema(tour, locale),
-    [tour, locale]
+    () => buildReservationSchema(tour),
+    [tour],
   );
   const today = useMemo(() => getTodayDateString(), []);
 
@@ -157,7 +152,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
       (schedule) =>
         schedule.weekday &&
         schedule.start_time &&
-        normalizeWeekday(schedule.weekday) === selectedWeekday
+        normalizeWeekday(schedule.weekday) === selectedWeekday,
     );
   }, [tour.tour_schedule, selectedDate]);
 
@@ -176,18 +171,14 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
 
   const isScheduleDisabled = !selectedDate || filteredSchedules.length === 0;
   const schedulePlaceholder = !selectedDate
-    ? t.timeSelectDateFirst
+    ? "Primero selecciona una fecha"
     : filteredSchedules.length === 0
-      ? t.timeNoSchedulesForDay
-      : t.timePlaceholder;
+      ? "No hay horarios disponibles para este día"
+      : "Seleccionar la hora de la reserva";
 
   const openWhatsApp = (message: string) => {
     if (!window.navigator.onLine) {
-      toast.error(
-        locale === "es"
-          ? "No se pudo enviar la solicitud. Inténtalo nuevamente"
-          : "Could not send the request. Please try again"
-      );
+      toast.error("No se pudo enviar la solicitud. Inténtalo nuevamente");
       return;
     }
 
@@ -198,14 +189,10 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
   };
 
   const onSubmit = async (data: ReservationFormValues) => {
-    const isEs = locale === "es";
-
     const [year, month, day] = data.date.split("-");
     const formattedDate = `${day}-${month}-${year}`;
 
-    const message = isEs
-      ? `¡Hola! Me gustaría solicitar una reserva para el tour:\n\n*Tour:* ${tour.name}\n*Nombre:* ${data.fullName}\n*Personas:* ${data.people}\n*Fecha:* ${formattedDate}\n*Hora:* ${data.schedule}\n*Requiere transfer:* ${data.requiresTransfer === "yes" ? "Sí" : "No"}`
-      : `Hello! I would like to request a reservation for the tour:\n\n*Tour:* ${tour.name}\n*Name:* ${data.fullName}\n*People:* ${data.people}\n*Date:* ${formattedDate}\n*Time:* ${data.schedule}\n*Requires transfer:* ${data.requiresTransfer === "yes" ? "Yes" : "No"}`;
+    const message = `¡Hola! Me gustaría solicitar una reserva para el tour:\n\n*Tour:* ${tour.name}\n*Nombre:* ${data.fullName}\n*Personas:* ${data.people}\n*Fecha:* ${formattedDate}\n*Hora:* ${data.schedule}\n*Requiere transfer:* ${data.requiresTransfer === "yes" ? "Sí" : "No"}`;
 
     openWhatsApp(message);
   };
@@ -218,7 +205,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
       >
         <div className="mb-8 text-center">
           <h2 className="mb-1 text-sm font-semibold text-neutral-500">
-            {t.tourToBook}
+            Tour a reservar
           </h2>
           <h1 className="text-3xl font-bold text-neutral-600 sm:text-4xl">
             {tour.name}
@@ -228,11 +215,11 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-2xl space-y-6">
           <div className="space-y-2">
             <Label htmlFor="fullName" className="text-sm font-semibold text-neutral-500">
-              {t.fullName}
+              Nombre
             </Label>
             <Input
               id="fullName"
-              placeholder={t.fullNamePlaceholder}
+              placeholder="Ingresar nombre completo"
               className="h-10 rounded-md border-neutral-200 px-3 text-sm placeholder:text-neutral-400"
               {...register("fullName")}
             />
@@ -243,14 +230,14 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="people" className="text-sm font-semibold text-neutral-500">
-              {t.amountOfPeople}
+              Cantidad de personas
             </Label>
             <Input
               id="people"
               type="number"
               min={1}
               max={tour.spots}
-              placeholder={t.amountOfPeoplePlaceholder}
+              placeholder="Ingrese la cantidad de personas"
               className="h-10 rounded-md border-neutral-200 px-3 text-sm placeholder:text-neutral-400"
               {...register("people")}
             />
@@ -262,7 +249,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="date" className="text-sm font-semibold text-neutral-500">
-                {t.date}
+                Fecha
               </Label>
               <div className="relative">
                 <Input
@@ -280,7 +267,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
 
             <div className="space-y-2">
               <Label htmlFor="schedule" className="text-sm font-semibold text-neutral-500">
-                {t.time}
+                Hora
               </Label>
               <select
                 id="schedule"
@@ -294,7 +281,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
                 {filteredSchedules.map((schedule, index) => {
                   if (!schedule.weekday || !schedule.start_time) return null;
                   const value = `${schedule.weekday} - ${schedule.start_time}`;
-                  const displayText = `${translateWeekday(schedule.weekday, locale)} - ${schedule.start_time}`;
+                  const displayText = `${translateWeekday(schedule.weekday)} - ${schedule.start_time}`;
                   return (
                     <option key={`${value}-${index}`} value={value} className="capitalize">
                       {displayText}
@@ -310,7 +297,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
 
           <div className="flex flex-col items-center pb-4 pt-4">
             <Label className="mb-3 text-sm font-semibold text-neutral-500">
-              {t.requiresTransfer}
+              ¿Requiere transfer?
             </Label>
             <div className="flex gap-8">
               <label className="flex cursor-pointer items-center gap-2">
@@ -320,7 +307,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
                   {...register("requiresTransfer")}
                   className="size-4 accent-[#607536]"
                 />
-                <span className="text-sm font-medium text-neutral-700">{t.yes}</span>
+                <span className="text-sm font-medium text-neutral-700">Sí</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -329,7 +316,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
                   {...register("requiresTransfer")}
                   className="size-4 accent-[#607536]"
                 />
-                <span className="text-sm font-medium text-neutral-700">{t.no}</span>
+                <span className="text-sm font-medium text-neutral-700">No</span>
               </label>
             </div>
             {errors.requiresTransfer && (
@@ -345,7 +332,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
               disabled={isSubmitting}
               className="rounded-md bg-[#607536] px-8 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#3C4A22]"
             >
-              {isSubmitting ? "..." : t.requestReservation}
+              {isSubmitting ? "..." : "Solicitar reserva"}
             </Button>
           </div>
         </form>
@@ -354,10 +341,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
       <button
         type="button"
         onClick={() => {
-          const msg =
-            locale === "es"
-              ? `¡Hola! Tengo una consulta general sobre el tour "${tour.name}".`
-              : `Hello! I have a general question about the tour "${tour.name}".`;
+          const msg = `¡Hola! Tengo una consulta general sobre el tour "${tour.name}".`;
           openWhatsApp(msg);
         }}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:ring-offset-2"

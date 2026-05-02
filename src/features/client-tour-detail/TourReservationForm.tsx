@@ -7,8 +7,14 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClientTourDetail, translateWeekday } from "./TourDetailCard";
+import { ClientTourDetail } from "./TourDetailCard";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 const CLIENT_SURFACE = "#F2F1ED";
 const WEEKDAY_KEYS = [
@@ -62,7 +68,7 @@ function buildReservationSchema(tour: ClientTourDetail) {
       requiresTransfer: z.enum(["yes", "no"]),
     })
     .superRefine((data, ctx) => {
-      if (data.people > tour.spots) {
+      if (tour.spots > 0 && data.people > tour.spots) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["people"],
@@ -124,7 +130,6 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
     () => buildReservationSchema(tour),
     [tour],
   );
-  const today = useMemo(() => getTodayDateString(), []);
 
   const {
     register,
@@ -144,6 +149,16 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
   const selectedDate = watch("date");
   const selectedSchedule = watch("schedule");
 
+  const validWeekdays = useMemo(() => {
+    const weekdays = new Set<string>();
+    tour.tour_schedule.forEach((schedule) => {
+      if (schedule.weekday) {
+        weekdays.add(normalizeWeekday(schedule.weekday));
+      }
+    });
+    return weekdays;
+  }, [tour.tour_schedule]);
+
   const filteredSchedules = useMemo(() => {
     const selectedWeekday = selectedDate ? getWeekdayFromDate(selectedDate) : null;
     if (!selectedWeekday) return [];
@@ -161,7 +176,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
 
     const stillValid = filteredSchedules.some((schedule) => {
       if (!schedule.weekday || !schedule.start_time) return false;
-      return `${schedule.weekday} - ${schedule.start_time}` === selectedSchedule;
+      return schedule.start_time === selectedSchedule;
     });
 
     if (!stillValid) {
@@ -212,7 +227,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-2xl space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-2xl space-y-6" noValidate>
           <div className="space-y-2">
             <Label htmlFor="fullName" className="text-sm font-semibold text-neutral-500">
               Nombre
@@ -236,7 +251,7 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
               id="people"
               type="number"
               min={1}
-              max={tour.spots}
+              max={tour.spots > 0 ? tour.spots : undefined}
               placeholder="Ingrese la cantidad de personas"
               className="h-10 rounded-md border-neutral-200 px-3 text-sm placeholder:text-neutral-400"
               {...register("people")}
@@ -251,15 +266,45 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
               <Label htmlFor="date" className="text-sm font-semibold text-neutral-500">
                 Fecha
               </Label>
-              <div className="relative">
-                <Input
-                  id="date"
-                  type="date"
-                  min={today}
-                  className="h-10 rounded-md border-neutral-200 pr-10 text-sm text-neutral-600 [color-scheme:light] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
-                  {...register("date")}
-                />
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal h-10 border-neutral-200 text-sm text-neutral-600 bg-background hover:bg-background",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? (
+                      format(new Date(`${selectedDate}T12:00:00`), "PPP", { locale: es })
+                    ) : (
+                      <span>Seleccionar fecha</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate ? new Date(`${selectedDate}T12:00:00`) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        setValue("date", format(date, "yyyy-MM-dd"), { shouldValidate: true, shouldDirty: true });
+                      } else {
+                        setValue("date", "", { shouldValidate: true, shouldDirty: true });
+                      }
+                    }}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      if (date < today) return true;
+                      const weekday = WEEKDAY_KEYS[date.getDay()];
+                      return !validWeekdays.has(weekday);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.date && (
                 <p className="text-sm font-medium text-red-500">{errors.date.message}</p>
               )}
@@ -280,11 +325,10 @@ export function TourReservationForm({ tour }: TourReservationFormProps) {
                 </option>
                 {filteredSchedules.map((schedule, index) => {
                   if (!schedule.weekday || !schedule.start_time) return null;
-                  const value = `${schedule.weekday} - ${schedule.start_time}`;
-                  const displayText = `${translateWeekday(schedule.weekday)} - ${schedule.start_time}`;
+                  const value = schedule.start_time;
                   return (
-                    <option key={`${value}-${index}`} value={value} className="capitalize">
-                      {displayText}
+                    <option key={`${schedule.weekday}-${value}-${index}`} value={value} className="capitalize">
+                      {value}
                     </option>
                   );
                 })}

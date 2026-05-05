@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-reservation-states",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}

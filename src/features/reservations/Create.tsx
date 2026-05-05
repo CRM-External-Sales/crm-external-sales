@@ -334,6 +334,11 @@ export const CreateReservationView = () => {
     d.setFullYear(d.getFullYear() + 2);
     return d;
   }, []);
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   useEffect(() => {
     if (timeOptions.length === 0) {
@@ -730,9 +735,12 @@ export const CreateReservationView = () => {
                             );
                             setDatePopoverOpen(false);
                           }}
-                          disabled={(date) =>
-                            !isDateAllowedBySchedules(date, schedules)
-                          }
+                          disabled={(date) => {
+                            const candidate = new Date(date);
+                            candidate.setHours(0, 0, 0, 0);
+                            const isPast = candidate.getTime() < todayStart.getTime();
+                            return isPast || !isDateAllowedBySchedules(date, schedules);
+                          }}
                           defaultMonth={
                             field.value
                               ? parseLocalDateFromYMD(field.value)
@@ -914,13 +922,6 @@ export const CreateReservationView = () => {
                   >
                     Transfer
                   </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Se muestran solo vehículos <strong>libres</strong> con capacidad &ge;{" "}
-                    {peopleForTransfer} persona
-                    {peopleForTransfer === 1 ? "" : "s"}. &quot;Libre&quot; significa sin
-                    solapamiento con otra reserva en el tramo de servicio (según el tour) más
-                    un margen de retorno (por defecto 2 h).
-                  </p>
                   <select
                     id="transfer_id"
                     disabled={
@@ -955,6 +956,13 @@ export const CreateReservationView = () => {
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs text-muted-foreground">
+                    Se muestran solo vehículos <strong>libres</strong> con capacidad &ge;{" "}
+                    {peopleForTransfer} persona
+                    {peopleForTransfer === 1 ? "" : "s"}. &quot;Libre&quot; significa sin
+                    solapamiento con otra reserva en el tramo de servicio (según el tour) más
+                    un margen de retorno (por defecto 2 h).
+                  </p>
                   {transferSlotError && (
                     <p className="text-sm text-amber-800">{transferSlotError}</p>
                   )}

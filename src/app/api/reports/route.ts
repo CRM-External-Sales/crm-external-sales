@@ -1,70 +1,128 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { withAdminAuth, AuthenticatedRequest, AuthenticatedUser } from "@/lib/auth-middleware";
 import { prisma } from "@/lib/prisma";
 import { ReportQuerySchema } from "@/app/schemas/report.schema";
 import { serializeForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 import { createValidationErrorResponse } from "@/lib/error-formatter";
-import { validarFiltrosParaTipoReporte, construirWhereClause, calcularKPIsGenerales, FiltrosReporte, TipoReporte, GranularidadTemporal,} from "@/lib/report-helpers";
+import {
+  validarFiltrosParaTipoReporte,
+  construirWhereClause,
+  calcularKPIsGenerales,
+  RESERVATION_REPORT_INCLUDE,
+  FiltrosReporte,
+  TipoReporte,
+  GranularidadTemporal,
+} from "@/lib/report-helpers";
 import { agregarReservasPorTiempo, agregarReservasPorEstado, agregarReservasPorEmpleado, agregarIngresosPorTiempo, agregarIngresosPorTour,} from "@/lib/report-aggregations";
 import { filterReservationsByEffectiveState, isLifecycleListState } from "@/lib/reservation-lifecycle";
+import type { Prisma } from "@/generated/prisma";
+
+type ReservationReportRow = Prisma.reservationGetPayload<{
+  include: typeof RESERVATION_REPORT_INCLUDE;
+}>;
 
 /**
- * Genera el reporte según el tipo especificado
- * 
- * @param tipoReporte - Tipo de reporte a generar
- * @param granularidadTemporal - Granularidad para reportes de tiempo (semana, mes, trimestre, año)
- * @param filtros - Filtros aplicados al reporte
- * @returns Objeto con KPIs, datos del gráfico y reservas
+ * Genera el reporte según el tipo especificado.
+ *
+ * Estados de ciclo de vida (`pending` | `in_progress` | `completed`) dependen de fecha/hora/duración
+ * y no se pueden expresar solo con el campo `state` en Prisma. Se resuelven IDs con la misma lógica que
+ * `filterReservationsByEffectiveState` y el where final unificado es `reservation_id in (...)`.
  */
 async function generarReporte(
   tipoReporte: TipoReporte,
   granularidadTemporal: GranularidadTemporal | undefined,
   filtros: FiltrosReporte,
+  pagination: { page: number; limit: number },
 ) {
-  // Construir WHERE clause según filtros permitidos
+  const { page, limit } = pagination;
+  const skip = (page - 1) * limit;
+
   const whereClause = construirWhereClause(tipoReporte, filtros);
 
-  // Obtener reservas con relaciones necesarias
-  let reservations = await prisma.reservation.findMany({
-    where: whereClause,
-    include: {
-      tour: {
-        select: {
-          id_tour: true,
-          name: true,
-          type: true,
-          duration: true,
-        },
-      },
-      app_user: {
-        select: {
-          id: true,
-          username: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: {
-      date: "desc",
-    },
-  });
+  const estadoParam = filtros.estado;
+  const useEffectiveLifecycle =
+    estadoParam != null && estadoParam !== "" && isLifecycleListState(estadoParam);
 
-  if (
-    filtros.estado != null &&
-    filtros.estado !== "" &&
-    isLifecycleListState(filtros.estado)
-  ) {
-    reservations = filterReservationsByEffectiveState(
-      reservations as Parameters<typeof filterReservationsByEffectiveState>[0],
-      filtros.estado,
-    ) as typeof reservations;
+  let total: number;
+  let reservationsForMetrics: ReservationReportRow[];
+  let reservasPage: ReservationReportRow[];
+
+  if (useEffectiveLifecycle) {
+    const minimal = await prisma.reservation.findMany({
+      where: whereClause,
+      select: {
+        reservation_id: true,
+        state: true,
+        date: true,
+        time: true,
+        tour: { select: { duration: true } },
+      },
+      orderBy: { date: "desc" },
+    });
+
+    const matched = filterReservationsByEffectiveState(
+      minimal as Parameters<typeof filterReservationsByEffectiveState>[0],
+      estadoParam,
+    );
+    const ids: bigint[] = matched.map((r) => r.reservation_id as bigint);
+    total = ids.length;
+
+    if (ids.length === 0) {
+      reservationsForMetrics = [];
+      reservasPage = [];
+    } else {
+      const whereByIds: Prisma.reservationWhereInput = { reservation_id: { in: ids } };
+      const pageIds: bigint[] = ids.slice(skip, skip + limit);
+      let fullForKpis: ReservationReportRow[];
+      let pageRows: ReservationReportRow[];
+      if (pageIds.length === 0) {
+        fullForKpis = await prisma.reservation.findMany({
+          where: whereByIds,
+          include: RESERVATION_REPORT_INCLUDE,
+          orderBy: { date: "desc" },
+        });
+        pageRows = [];
+      } else {
+        [fullForKpis, pageRows] = await Promise.all([
+          prisma.reservation.findMany({
+            where: whereByIds,
+            include: RESERVATION_REPORT_INCLUDE,
+            orderBy: { date: "desc" },
+          }),
+          prisma.reservation.findMany({
+            where: { reservation_id: { in: pageIds } },
+            include: RESERVATION_REPORT_INCLUDE,
+            orderBy: { date: "desc" },
+          }),
+        ]);
+      }
+      reservationsForMetrics = fullForKpis;
+      reservasPage = pageRows;
+    }
+  } else {
+    const [count, reservations, pageRows] = await Promise.all([
+      prisma.reservation.count({ where: whereClause }),
+      prisma.reservation.findMany({
+        where: whereClause,
+        include: RESERVATION_REPORT_INCLUDE,
+        orderBy: { date: "desc" },
+      }),
+      prisma.reservation.findMany({
+        where: whereClause,
+        include: RESERVATION_REPORT_INCLUDE,
+        orderBy: { date: "desc" },
+        skip,
+        take: limit,
+      }),
+    ]);
+    total = count;
+    reservationsForMetrics = reservations;
+    reservasPage = pageRows;
   }
 
-  //KPIs generales
-  const kpis = calcularKPIsGenerales(reservations);
+  const kpis = calcularKPIsGenerales(reservationsForMetrics);
 
-  //Datos del gráfico según el tipo de reporte
   let datosGrafico: unknown;
 
   switch (tipoReporte) {
@@ -72,33 +130,42 @@ async function generarReporte(
       if (!granularidadTemporal) {
         throw new Error("granularidad_temporal es requerida para reportes de tiempo");
       }
-      datosGrafico = agregarReservasPorTiempo(reservations, granularidadTemporal);
+      datosGrafico = agregarReservasPorTiempo(reservationsForMetrics, granularidadTemporal);
       break;
     }
     case "reservas_estado":
-      datosGrafico = agregarReservasPorEstado(reservations);
+      datosGrafico = agregarReservasPorEstado(reservationsForMetrics);
       break;
     case "reservas_empleado":
-      datosGrafico = agregarReservasPorEmpleado(reservations);
+      datosGrafico = agregarReservasPorEmpleado(reservationsForMetrics);
       break;
     case "ingresos_tiempo": {
       if (!granularidadTemporal) {
         throw new Error("granularidad_temporal es requerida para reportes de tiempo");
       }
-      datosGrafico = agregarIngresosPorTiempo(reservations, granularidadTemporal);
+      datosGrafico = agregarIngresosPorTiempo(reservationsForMetrics, granularidadTemporal);
       break;
     }
     case "ingresos_tour":
-      datosGrafico = agregarIngresosPorTour(reservations);
+      datosGrafico = agregarIngresosPorTour(reservationsForMetrics);
       break;
     default:
       throw new Error(`Tipo de reporte no reconocido: ${tipoReporte}`);
   }
 
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+
   return {
     kpis,
     datosGrafico,
-    totalReservas: reservations.length,
+    totalReservas: reservationsForMetrics.length,
+    reservas: reservasPage,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+    },
   };
 }
 
@@ -134,6 +201,12 @@ async function logReportAccess(
  * - usuarioId: ID del empleado (opcional, según tipo de reporte)
  * - estado: Estado de la reserva (opcional, según tipo de reporte)
  * - tipo_reserva: Tipo de reserva (con_transfer, sin_transfer) (opcional)
+ * - page: Página (default 1, entero >= 1)
+ * - limit: Tamaño de página (default 10, entre 1 y 1000)
+ * 
+ * La respuesta incluye `pagination`, `reservas` (página), KPIs y gráficos sobre el **mismo** conjunto.
+ * Si `estado` es pending | in_progress | completed, el criterio es el **estado efectivo** (fecha/hora/duración);
+ * el filtro no cabe en un único `state` de Prisma, así que se unifica el dataset vía `reservation_id in (...)`.
  * 
  * RF-RP5: Only users with administrator role can generate, view and export reports
  */
@@ -166,6 +239,8 @@ export const GET = withAdminAuth(
         usuarioId,
         estado,
         tipo_reserva,
+        page,
+        limit,
       } = validatedQuery;
 
       // 2. Preparar objeto de filtros
@@ -202,7 +277,10 @@ export const GET = withAdminAuth(
       }
 
       // 5. Generar el reporte
-      const reporte = await generarReporte(tipo_reporte, granularidad_temporal, filtros);
+      const reporte = await generarReporte(tipo_reporte, granularidad_temporal, filtros, {
+        page,
+        limit,
+      });
 
       // 6. Preparar fechas para la respuesta 
       const inicio = new Date(filtros.fecha_inicio + 'T00:00:00.000Z');
@@ -226,6 +304,8 @@ export const GET = withAdminAuth(
         kpis: reporte.kpis,
         datosGrafico: reporte.datosGrafico,
         totalReservas: reporte.totalReservas,
+        reservas: reporte.reservas,
+        pagination: reporte.pagination,
       };
 
       const serializedResponse = serializeForJSON(responseData);

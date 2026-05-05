@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
@@ -45,6 +46,7 @@ import { EditTransferView } from "./Edit";
 export const View = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [selectedTransfers, setSelectedTransfers] = useState<number[]>([]);
   const [singleTransfer, setSingleTransfer] = useState<Transfer | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -57,7 +59,6 @@ export const View = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
 
-  const limit = 5;
   const normalizeText = (value: string) => value.trim().toLowerCase();
 
   const {
@@ -382,30 +383,6 @@ export const View = () => {
     setDeleteError(null);
   };
 
-  const handlePrevious = () => {
-    if (currentPage > 1 && !singleTransfer && !isIdSearchActive) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (
-      pagination &&
-      currentPage < pagination.totalPages &&
-      !singleTransfer &&
-      !isIdSearchActive
-    ) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const canGoPrevious = currentPage > 1 && !singleTransfer && !isIdSearchActive;
-  const canGoNext =
-    pagination &&
-    currentPage < pagination.totalPages &&
-    !singleTransfer &&
-    !isIdSearchActive;
-
   // Si hay un transfer en edición, mostrar el formulario de edición
   if (editingTransfer) {
     return (
@@ -690,23 +667,17 @@ export const View = () => {
             )}
           </div>
 
-          {/* Paginación */}
-          <div className="flex justify-end gap-2">
-            <Button
-              onClick={handlePrevious}
-              disabled={!canGoPrevious}
-              className="bg-[#3B7F73] text-white hover:bg-[#2d5f55] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#3B7F73]"
-            >
-              Anterior
-            </Button>
-            <Button
-              onClick={handleNext}
-              disabled={!canGoNext}
-              className="bg-[#607536] text-white hover:bg-[#4a5c2a] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#607536]"
-            >
-              Siguiente
-            </Button>
-          </div>
+          <PaginationControls
+            page={currentPage}
+            limit={limit}
+            total={pagination?.total ?? displayTransfers.length}
+            disabled={Boolean(singleTransfer || isIdSearchActive)}
+            onPageChange={setCurrentPage}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setCurrentPage(1);
+            }}
+          />
         </>
       )}
 

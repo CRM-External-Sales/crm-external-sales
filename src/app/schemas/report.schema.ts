@@ -55,24 +55,36 @@ export const ReportQuerySchema = z.object({
     .transform((val) => (val ? BigInt(val) : undefined)),
   usuarioId: z.string().uuid().optional(),
   estado: z.string().optional(), // Estado de la reserva
-  tipo_reserva: z
-    .enum(["con_transfer", "sin_transfer"])
-    .optional(), // Tipo de reserva: con transfer o sin transfer
-  // Paginación y límites
-  limit: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val) : 1000))
-    .refine((val) => val > 0 && val <= 1000, {
-      message: "limit debe estar entre 1 y 1000",
-    }),
+  tipo_reserva: z.enum(["con_transfer", "sin_transfer"]).optional(),
+  // Paginación (query string → número; valores inválidos rechazan la petición)
   page: z
     .string()
     .optional()
-    .transform((val) => (val ? parseInt(val) : 1))
-    .refine((val) => val > 0, {
-      message: "page debe ser mayor a 0",
-    }),
+    .transform((val) => (val == null || val === "" ? "1" : val))
+    .pipe(
+      z
+        .string()
+        .regex(/^\d+$/, { message: "page debe ser un entero positivo" })
+        .transform(Number)
+        .pipe(z.number().int().min(1, { message: "page debe ser mayor o igual a 1" })),
+    ),
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => (val == null || val === "" ? "10" : val))
+    .pipe(
+      z
+        .string()
+        .regex(/^\d+$/, { message: "limit debe ser un entero positivo" })
+        .transform(Number)
+        .pipe(
+          z
+            .number()
+            .int()
+            .min(1, { message: "limit debe estar entre 1 y 1000" })
+            .max(1000, { message: "limit debe estar entre 1 y 1000" }),
+        ),
+    ),
 })
   .refine(
     (data) => {

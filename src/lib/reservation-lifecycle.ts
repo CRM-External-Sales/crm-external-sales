@@ -72,7 +72,8 @@ export function combineReservationDateAndTime(date: Date, time: Date): Date {
   return t;
 }
 
-function isDbCancelledState(state: string): boolean {
+/** Persistido en BD; también usado para excluir filas al sincronizar ciclo de vida. */
+export function isDbCancelledState(state: string): boolean {
   return state === "cancelled" || state.toLowerCase() === "cancelada";
 }
 
@@ -100,6 +101,7 @@ export function computeEffectiveReservationState(
   return "completed";
 }
 
+/** Valores de filtro API que corresponden al ciclo de vida **calculado** (no al string crudo en BD). */
 export function isLifecycleListState(
   s: string | null | undefined,
 ): s is "pending" | "in_progress" | "completed" {

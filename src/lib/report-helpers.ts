@@ -1,5 +1,24 @@
 import { Decimal } from "@prisma/client/runtime/library";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@/generated/prisma";
+
+/** Include compartido entre listado paginado y conjunto completo para KPIs/gráficos. */
+export const RESERVATION_REPORT_INCLUDE = {
+  tour: {
+    select: {
+      id_tour: true,
+      name: true,
+      type: true,
+      duration: true,
+    },
+  },
+  app_user: {
+    select: {
+      id: true,
+      username: true,
+      email: true,
+    },
+  },
+} satisfies Prisma.reservationInclude;
 
 /**
  * Tipos de reporte disponibles
@@ -32,11 +51,25 @@ export interface FiltrosReporte {
  * Configuración de filtros permitidos por tipo de reporte
  */
 const FILTROS_PERMITIDOS: Record<TipoReporte, (keyof FiltrosReporte)[]> = {
-  reservas_tiempo: ["fecha_inicio", "fecha_fin", "estado", "tourId", "usuarioId"],
-  reservas_estado: ["fecha_inicio", "fecha_fin", "tourId", "usuarioId"],
-  reservas_empleado: ["fecha_inicio", "fecha_fin", "estado", "tourId"],
-  ingresos_tiempo: ["fecha_inicio", "fecha_fin", "estado", "tourId", "usuarioId"],
-  ingresos_tour: ["fecha_inicio", "fecha_fin", "estado"],
+  reservas_tiempo: [
+    "fecha_inicio",
+    "fecha_fin",
+    "estado",
+    "tourId",
+    "usuarioId",
+    "tipo_reserva",
+  ],
+  reservas_estado: ["fecha_inicio", "fecha_fin", "tourId", "usuarioId", "tipo_reserva"],
+  reservas_empleado: ["fecha_inicio", "fecha_fin", "estado", "tourId", "tipo_reserva"],
+  ingresos_tiempo: [
+    "fecha_inicio",
+    "fecha_fin",
+    "estado",
+    "tourId",
+    "usuarioId",
+    "tipo_reserva",
+  ],
+  ingresos_tour: ["fecha_inicio", "fecha_fin", "estado", "tipo_reserva"],
 };
 
 /**
@@ -114,8 +147,8 @@ export function validarFiltrosParaTipoReporte(
 export function construirWhereClause(
   tipoReporte: TipoReporte,
   filtros: FiltrosReporte,
-): Record<string, unknown> {
-  const where: Record<string, unknown> = {};
+): Prisma.reservationWhereInput {
+  const where: Prisma.reservationWhereInput = {};
 
   // Filtro de fechas 
   const fechaInicio = new Date(filtros.fecha_inicio + 'T00:00:00.000Z');
@@ -145,14 +178,13 @@ export function construirWhereClause(
       filtros.estado === "in_progress" ||
       filtros.estado === "completed"
     ) {
-      (where as { state?: unknown }).state = { not: "cancelled" };
+      where.state = { not: "cancelled" };
     } else {
-      (where as { state?: string }).state = filtros.estado;
+      where.state = filtros.estado;
     }
   }
 
-  // Filtro de tipo_reserva (si está permitido y proporcionado)
-  if (filtros.tipo_reserva) {
+  if (filtrosPermitidos.includes("tipo_reserva") && filtros.tipo_reserva) {
     if (filtros.tipo_reserva === "con_transfer") {
       where.transfer_id = { not: null };
     } else if (filtros.tipo_reserva === "sin_transfer") {
@@ -161,6 +193,15 @@ export function construirWhereClause(
   }
 
   return where;
+}
+
+/**
+ * Reserva con `state` almacenado en BD considerada cancelada para conteos y exclusión financiera.
+ * Mantiene el criterio usado históricamente en KPIs; el estado efectivo (ciclo de vida) no aplica aquí
+ * — el importe de una fila cancelada en BD no cuenta como ingreso.
+ */
+export function isReservationCancelledForReports(state: string): boolean {
+  return state.toLowerCase().includes("cancel");
 }
 
 /**
@@ -186,33 +227,39 @@ export function calcularKPIsGenerales(
   }>,
 ): KPIsGenerales {
   const totalReservas = reservations.length;
-  
-  const reservasCanceladas = reservations.filter(
-    (r) => r.state.toLowerCase().includes("cancel") || r.state.toLowerCase() === "cancelada",
-  ).length;
-  
-  const reservasNoCanceladas = totalReservas - reservasCanceladas;
-  
-  const porcentajeCancelaciones = totalReservas > 0
-    ? Number(((reservasCanceladas / totalReservas) * 100).toFixed(2))
-    : 0;
 
-  const totalIngresos = reservations.reduce(
+  const reservasCanceladas = reservations.filter((r) =>
+    isReservationCancelledForReports(r.state),
+  ).length;
+
+  const reservasNoCanceladas = totalReservas - reservasCanceladas;
+
+  const porcentajeCancelaciones =
+    totalReservas > 0
+      ? Number(((reservasCanceladas / totalReservas) * 100).toFixed(2))
+      : 0;
+
+  const reservasFinancieras = reservations.filter(
+    (r) => !isReservationCancelledForReports(r.state),
+  );
+  const nFin = reservasFinancieras.length;
+
+  const totalIngresos = reservasFinancieras.reduce(
     (sum, r) => sum + Number(r.total),
     0,
   );
-  
-  const totalDescuentos = reservations.reduce(
+
+  const totalDescuentos = reservasFinancieras.reduce(
     (sum, r) => sum + Number(r.discount),
     0,
   );
-  
-  const totalIva = reservations.reduce(
+
+  const totalIva = reservasFinancieras.reduce(
     (sum, r) => sum + Number(r.iva),
     0,
   );
-  
-  const promedioReserva = totalReservas > 0 ? totalIngresos / totalReservas : 0;
+
+  const promedioReserva = nFin > 0 ? totalIngresos / nFin : 0;
 
   return {
     total_reservas: totalReservas,

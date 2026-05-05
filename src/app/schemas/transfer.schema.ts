@@ -58,6 +58,7 @@ export const TransferQuerySchema = z.object({
   make: z.string().optional(),
   category: z.string().optional(),
   availability: z.string().optional(),
+  type: z.string().optional(),
 });
 
 /** Enteros positivos desde inputs HTML (texto/número como string) */

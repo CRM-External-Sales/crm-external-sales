@@ -39,7 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MoreHorizontal, CheckCircle2, Trash2 } from "lucide-react";
+import { MoreHorizontal, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { EditTransferView } from "./Edit";
 
@@ -47,14 +47,12 @@ export const View = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [selectedTransfers, setSelectedTransfers] = useState<number[]>([]);
   const [singleTransfer, setSingleTransfer] = useState<Transfer | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [editingTransfer, setEditingTransfer] = useState<Transfer | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [transferToDelete, setTransferToDelete] = useState<Transfer | null>(null);
-  const [selectedTransfersToDelete, setSelectedTransfersToDelete] = useState<number[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
@@ -114,6 +112,27 @@ export const View = () => {
     availability: availabilityFilter || undefined,
     type: typeFilter || undefined,
   });
+
+  const { transfers: transfersForOptions } = useTransfers({
+    page: 1,
+    limit: 200,
+  });
+
+  const makeOptions = Array.from(
+    new Set(
+      transfersForOptions
+        .map((t) => String(t.make).trim())
+        .filter((v) => v.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "es"));
+
+  const categoryOptions = Array.from(
+    new Set(
+      transfersForOptions
+        .map((t) => String(t.category).trim())
+        .filter((v) => v.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "es"));
 
   // Función para buscar por placa
   const searchByLicensePlate = async (licensePlate: string) => {
@@ -215,30 +234,6 @@ export const View = () => {
   const isLoading = loading || searchLoading;
   const displayError = error || searchError;
 
-  useEffect(() => {
-    // Evita mantener ids seleccionados cuando cambia la tabla por búsqueda/filtros.
-    setSelectedTransfers((prev) =>
-      prev.filter((id) => displayTransfers.some((transfer) => transfer.license_plate === id)),
-    );
-  }, [displayTransfers]);
-
-  // Manejo de selección de filas
-  const handleSelectTransfer = (licensePlate: number) => {
-    setSelectedTransfers((prev) =>
-      prev.includes(licensePlate)
-        ? prev.filter((id) => id !== licensePlate)
-        : [...prev, licensePlate]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedTransfers.length === displayTransfers.length) {
-      setSelectedTransfers([]);
-    } else {
-      setSelectedTransfers(displayTransfers.map((t) => t.license_plate));
-    }
-  };
-
   const handleEditTransfer = (transfer: Transfer) => {
     setEditingTransfer(transfer);
   };
@@ -249,98 +244,35 @@ export const View = () => {
 
   const handleEditSuccess = () => {
     setEditingTransfer(null);
-    setSelectedTransfers([]);
     refetch();
   };
 
   const handleDeleteTransfer = (transfer: Transfer) => {
-    setSelectedTransfersToDelete([]);
     setTransferToDelete(transfer);
     setDeleteError(null);
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedTransfers.length === 0) return;
-    setTransferToDelete(null);
-    setSelectedTransfersToDelete(selectedTransfers);
-    setDeleteError(null);
-    setDeleteDialogOpen(true);
-  };
-
   const handleConfirmDelete = async () => {
-    if (!transferToDelete && selectedTransfersToDelete.length === 0) return;
+    if (!transferToDelete) return;
 
     setDeleting(true);
     setDeleteError(null);
 
     try {
-      if (selectedTransfersToDelete.length > 0) {
-        let successCount = 0;
-        const failedPlates: number[] = [];
+      const response = await transferService.deleteTransfer(transferToDelete.license_plate);
 
-        for (const plate of selectedTransfersToDelete) {
-          try {
-            const response = await transferService.deleteTransfer(plate);
-            if (response.success) {
-              successCount += 1;
-            } else {
-              failedPlates.push(plate);
-            }
-          } catch {
-            failedPlates.push(plate);
-          }
-        }
-
-        if (successCount > 0) {
-          setDeleteDialogOpen(false);
-          setTransferToDelete(null);
-          setSelectedTransfersToDelete([]);
-          setSelectedTransfers((prev) =>
-            prev.filter((plate) => failedPlates.includes(plate)),
-          );
-          setDeleteSuccess(
-            failedPlates.length === 0
-              ? `${successCount} transfer(s) eliminado(s) correctamente.`
-              : `${successCount} transfer(s) eliminado(s). ${failedPlates.length} no se pudieron eliminar.`,
-          );
-          toast.success(
-            failedPlates.length === 0
-              ? `${successCount} transfer(s) eliminado(s) correctamente.`
-              : `${successCount} transfer(s) eliminado(s). ${failedPlates.length} no se pudieron eliminar.`,
-          );
-          await refetch();
-          setTimeout(() => {
-            setDeleteSuccess(null);
-          }, 3000);
-        } else {
-          setDeleteError(
-            failedPlates.length > 0
-              ? `No se pudieron eliminar los transfers seleccionados: ${failedPlates.join(", ")}`
-              : "No se pudieron eliminar los transfers seleccionados.",
-          );
-        }
+      if (response.success) {
+        setDeleteDialogOpen(false);
+        setTransferToDelete(null);
+        setDeleteSuccess("Transfer eliminado correctamente.");
+        toast.success("Transfer eliminado correctamente.");
+        await refetch();
+        setTimeout(() => {
+          setDeleteSuccess(null);
+        }, 3000);
       } else {
-        if (!transferToDelete) {
-          setDeleteError("No se encontró el transfer a eliminar.");
-          return;
-        }
-
-        const response = await transferService.deleteTransfer(transferToDelete.license_plate);
-
-        if (response.success) {
-          setDeleteDialogOpen(false);
-          setTransferToDelete(null);
-          setSelectedTransfersToDelete([]);
-          setDeleteSuccess("Transfer eliminado correctamente.");
-          toast.success("Transfer eliminado correctamente.");
-          await refetch();
-          setTimeout(() => {
-            setDeleteSuccess(null);
-          }, 3000);
-        } else {
-          setDeleteError(response.error || "No se pudo eliminar el transfer");
-        }
+        setDeleteError(response.error || "No se pudo eliminar el transfer");
       }
     } catch (err) {
       if (isAxiosLikeError(err) && err.response?.data) {
@@ -379,7 +311,6 @@ export const View = () => {
   const handleCancelDelete = () => {
     setDeleteDialogOpen(false);
     setTransferToDelete(null);
-    setSelectedTransfersToDelete([]);
     setDeleteError(null);
   };
 
@@ -428,31 +359,43 @@ export const View = () => {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Label className="mb-2 block text-sm font-medium">Marca</Label>
-            <Input
-              type="text"
-              placeholder="Filtrar por marca..."
-              className="w-full"
+            <select
+              title="Filtrar por marca"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2"
               {...register("makeFilter", {
                 onChange: () => {
                   setCurrentPage(1);
                   setSingleTransfer(null);
                 },
               })}
-            />
+            >
+              <option value="">Todas las marcas</option>
+              {makeOptions.map((make) => (
+                <option key={make} value={make}>
+                  {make}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label className="mb-2 block text-sm font-medium">Categoría</Label>
-            <Input
-              type="text"
-              placeholder="Filtrar por categoría..."
-              className="w-full"
+            <select
+              title="Filtrar por categoría"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2"
               {...register("categoryFilter", {
                 onChange: () => {
                   setCurrentPage(1);
                   setSingleTransfer(null);
                 },
               })}
-            />
+            >
+              <option value="">Todas las categorías</option>
+              {categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
             {errors.categoryFilter && (
               <p className="mt-1 text-sm text-destructive">{errors.categoryFilter.message}</p>
             )}
@@ -533,14 +476,6 @@ export const View = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px] text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedTransfers.length === displayTransfers.length && displayTransfers.length > 0}
-                      onChange={handleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                  </TableHead>
                   <TableHead className="text-center font-semibold text-foreground">
                     Placa
                   </TableHead>
@@ -574,14 +509,6 @@ export const View = () => {
               <TableBody>
                 {displayTransfers.map((transfer: Transfer) => (
                   <TableRow key={transfer.license_plate}>
-                    <TableCell className="text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedTransfers.includes(transfer.license_plate)}
-                        onChange={() => handleSelectTransfer(transfer.license_plate)}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                    </TableCell>
                     <TableCell className="text-center">
                       {transfer.license_plate.toString()}
                     </TableCell>
@@ -649,24 +576,6 @@ export const View = () => {
             </Table>
           </div>
 
-          {/* Información de selección */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {selectedTransfers.length} de {displayTransfers.length} fila(s) seleccionada(s).
-            </p>
-            {selectedTransfers.length > 0 && (
-              <button
-                type="button"
-                onClick={handleDeleteSelected}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600 transition-colors hover:bg-red-100"
-                aria-label="Eliminar transfers seleccionados"
-                title="Eliminar seleccionados"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
           <PaginationControls
             page={currentPage}
             limit={limit}
@@ -689,22 +598,7 @@ export const View = () => {
               ¿Eliminar transfer?
             </DialogTitle>
             <DialogDescription className="text-center text-[#4A4A4A] pt-2">
-              {selectedTransfersToDelete.length > 0 ? (
-                <>
-                  Estás a punto de eliminar{" "}
-                  <strong className="text-[#1A1F1B]">
-                    {selectedTransfersToDelete.length}
-                  </strong>{" "}
-                  transfer(s) seleccionado(s).
-                  <br />
-                  <br />
-                  <span className="text-red-600 font-medium">
-                    Esta acción no se puede deshacer.
-                  </span>
-                  <br />
-                  Si alguno tiene reservas asociadas, no se podrá eliminar.
-                </>
-              ) : transferToDelete ? (
+              {transferToDelete ? (
                 <>
                   Estás a punto de eliminar el transfer con placa{" "}
                   <strong className="text-[#1A1F1B]">{transferToDelete.license_plate.toString()}</strong>.

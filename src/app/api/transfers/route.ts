@@ -8,17 +8,14 @@ import {
 import { createValidationErrorResponse } from "@/lib/error-formatter";
 import { serializeForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
+import type { Prisma } from "@/generated/prisma";
 import {
   ensureInternalSupplierExists,
   INTERNAL_SUPPLIER_CORPORATE,
 } from "@/lib/internal-supplier";
 
 // Interface para where clause de transfer
-interface TransferWhereInput {
-  make?: string;
-  category?: string;
-  availability?: string;
-}
+type TransferWhereInput = Prisma.transferWhereInput;
 
 // GET /api/transfers - Obtener todos los transfers disponibles
 export const GET = withAuth(
@@ -28,21 +25,27 @@ export const GET = withAuth(
       const queryParams = Object.fromEntries(searchParams.entries());
 
       const validatedQuery = TransferQuerySchema.parse(queryParams);
-      const { page, limit, make, category, availability } = validatedQuery;
+      const { page, limit, make, category, availability, type } = validatedQuery;
 
       // Construir cláusula where
       const where: TransferWhereInput = {};
 
-      if (make) {
-        where.make = make;
+      const makeTrim = make?.trim();
+      if (makeTrim) {
+        where.make = { contains: makeTrim, mode: "insensitive" };
       }
 
-      if (category) {
-        where.category = category;
+      const categoryTrim = category?.trim();
+      if (categoryTrim) {
+        where.category = { contains: categoryTrim, mode: "insensitive" };
       }
 
       if (availability) {
         where.availability = availability;
+      }
+
+      if (type?.trim()) {
+        where.type = type;
       }
 
       // Calcular paginación

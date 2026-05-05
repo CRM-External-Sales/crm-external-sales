@@ -384,7 +384,7 @@ export const ReservationsListView = () => {
             title="Filtrar por estado"
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value)}
-            className={`flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!stateFilter ? "text-muted-foreground" : ""}`}
+            className={`flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!stateFilter ? "font-medium text-[#4f5d39]" : "font-semibold text-[#2B3418]"}`}
           >
             <option value="">Estado</option>
             <option value="pending">Pendiente</option>
@@ -405,7 +405,7 @@ export const ReservationsListView = () => {
             title="Filtrar por transfer"
             value={transferFilter}
             onChange={(e) => setTransferFilter(e.target.value)}
-            className={`flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!transferFilter ? "text-muted-foreground" : ""}`}
+            className={`flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 ${!transferFilter ? "font-medium text-[#4f5d39]" : "font-semibold text-[#2B3418]"}`}
           >
             <option value="">Transfer</option>
             <option value="__none__">Sin transfer</option>

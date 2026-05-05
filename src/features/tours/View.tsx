@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ export const View = () => {
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("");
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -50,8 +52,6 @@ export const View = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
-
-  const limit = 5;
 
   // Debounce del término de búsqueda
   useEffect(() => {
@@ -136,19 +136,6 @@ export const View = () => {
     setTourToDelete(null);
     setDeleteError(null);
   };
-
-  const handlePrevious = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNext = () => {
-    if (pagination && currentPage < pagination.totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const canGoPrevious = currentPage > 1;
-  const canGoNext = pagination && currentPage < pagination.totalPages;
 
   if (editingTour) {
     return (
@@ -348,30 +335,16 @@ export const View = () => {
             </Table>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
-            <div className="text-sm text-muted-foreground w-full text-left">
-              Mostrando {tours.length} {tours.length === 1 ? "tour" : "tours"}{" "}
-              {pagination && `• Página ${currentPage} de ${pagination.totalPages}`}
-            </div>
-
-            {/* Paginación */}
-            <div className="flex justify-end gap-2 w-full">
-              <Button
-                onClick={handlePrevious}
-                disabled={!canGoPrevious}
-                className="bg-[#647a3a]/80 text-white hover:bg-[#647a3a] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Anterior
-              </Button>
-              <Button
-                onClick={handleNext}
-                disabled={!canGoNext}
-                className="bg-[#647a3a] text-white hover:bg-[#4f622d] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
+          <PaginationControls
+            page={currentPage}
+            limit={limit}
+            total={pagination?.total ?? tours.length}
+            onPageChange={setCurrentPage}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setCurrentPage(1);
+            }}
+          />
         </>
       )}
 

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { userService, type User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import {
@@ -45,6 +46,7 @@ export const View = () => {
   const [roleFilter, setRoleFilter] = useState<string>("");
   
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Redirigir a editar el perfil propio si viene desde el sidebar
@@ -60,8 +62,6 @@ export const View = () => {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const limit = 5;
 
   // Formatear rol
   const formatRole = (role: string) => {
@@ -158,22 +158,9 @@ export const View = () => {
     setDeleteError(null);
   };
 
-  const handlePrevious = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNext = () => {
-    if (pagination && currentPage < pagination.totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
   const handleRoleToggle = (role: string) => {
     setRoleFilter(prev => prev === role ? "" : role);
   };
-
-  const canGoPrevious = currentPage > 1;
-  const canGoNext = pagination && currentPage < pagination.totalPages;
 
   if (editingUser) {
     return (
@@ -331,31 +318,16 @@ export const View = () => {
               </Table>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
-              <div className="text-sm text-muted-foreground w-full text-left">
-                Mostrando {users.length}{" "}
-                {users.length === 1 ? "usuario" : "usuarios"}{" "}
-                {pagination && `• Página ${currentPage} de ${pagination.totalPages}`}
-              </div>
-
-              {/* Paginación */}
-              <div className="flex justify-end gap-2 w-full">
-                <Button
-                  onClick={handlePrevious}
-                  disabled={!canGoPrevious}
-                  className="bg-[#647a3a]/80 text-white hover:bg-[#647a3a] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Anterior
-                </Button>
-                <Button
-                  onClick={handleNext}
-                  disabled={!canGoNext}
-                  className="bg-[#647a3a] text-white hover:bg-[#4f622d] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
+            <PaginationControls
+              page={currentPage}
+              limit={limit}
+              total={pagination?.total ?? users.length}
+              onPageChange={setCurrentPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setCurrentPage(1);
+              }}
+            />
           </>
         )}
 

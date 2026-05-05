@@ -21,53 +21,8 @@ import {
   reservationWhereForListStateParam,
 } from "@/lib/reservation-lifecycle";
 import { enrichReservationForApiResponse } from "@/lib/reservation-cancellation-policy";
-
-function serializeReservationForJSON(obj: any): any {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-
-  if (typeof obj === "bigint") {
-    return Number(obj);
-  }
-
-  if (obj instanceof Decimal) {
-    return obj.toNumber();
-  }
-
-  if (obj instanceof Date) {
-      // Verificar si es probablemente un campo de solo hora (1970-01-01)
-      // Pero la reserva tiene campos de fecha y hora.
-      // Nos basaremos en el nombre de la clave en el procesamiento recursivo del objeto si es posible,
-      // pero aquí estamos serializando un valor.
-      // Usaremos la cadena ISO estándar para las fechas.
-      // Para el campo "time", el consumidor debe manejarlo, o lo formateamos si conocemos el contexto.
-      // Dado que esta es una función recursiva genérica, simplemente devolvemos la cadena ISO.
-      // El frontend puede analizar el formato.
-      return obj.toISOString();
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(serializeReservationForJSON);
-  }
-
-  if (typeof obj === "object") {
-    const serialized: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-        if (key === 'time' && value instanceof Date) {
-            // Formato especial del campo de hora HH:mm
-             const hours = String(value.getUTCHours()).padStart(2, "0");
-             const minutes = String(value.getUTCMinutes()).padStart(2, "0");
-             serialized[key] = `${hours}:${minutes}`;
-        } else {
-             serialized[key] = serializeReservationForJSON(value);
-        }
-    }
-    return serialized;
-  }
-
-  return obj;
-}
+import { syncReservationStatesInDatabase } from "@/lib/sync-reservation-db-states";
+import { serializeReservationForJSON } from "@/lib/serialize-reservation-for-json";
 
 export const POST = withRole("agent")(async (request: AuthenticatedRequest, user) => {
   try {
@@ -228,6 +183,9 @@ export const GET = withRole("agent")(async (request: AuthenticatedRequest, user)
     const queryParams = Object.fromEntries(searchParams.entries());
     const listQuery = ReservationListQuerySchema.parse(queryParams);
 
+    const now = new Date();
+    await syncReservationStatesInDatabase(now);
+
     const { page, limit, date, dateFrom, dateTo, state, transfer_id, q: searchQ } =
       listQuery;
     const skip = (page - 1) * limit;
@@ -336,8 +294,6 @@ export const GET = withRole("agent")(async (request: AuthenticatedRequest, user)
         },
       },
     } as const;
-
-    const now = new Date();
 
     if (state && isLifecycleListState(state)) {
       const matching = await prisma.reservation.findMany({

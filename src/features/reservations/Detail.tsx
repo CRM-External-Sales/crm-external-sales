@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useReservation } from "@/hooks/useReservation";
 import { reservationService, type ApiResponse } from "@/lib/api";
-import { formatUsd } from "@/lib/format-currency";
+import { formatUsdAmount } from "@/lib/format-currency";
 import { isAxiosLikeError } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 
@@ -382,25 +382,25 @@ export const ReservationDetailView = () => {
         />
         <InfoRow
           label="Monto tour"
-          value={formatUsd(Number(reservation.tour_amount))}
+          value={formatUsdAmount(reservation.tour_amount)}
         />
         <InfoRow
           label="Monto transfer"
-          value={formatUsd(Number(reservation.transfer_amount))}
+          value={formatUsdAmount(reservation.transfer_amount)}
         />
         <InfoRow
           label="Subtotal / IVA / Descuento"
           value={[
-            formatUsd(Number(reservation.subtotal)),
-            formatUsd(Number(reservation.iva)),
-            formatUsd(Number(reservation.discount)),
+            formatUsdAmount(reservation.subtotal),
+            formatUsdAmount(reservation.iva),
+            formatUsdAmount(reservation.discount),
           ].join(" · ")}
         />
         <InfoRow
           label="Total"
           value={
             <span className="font-semibold text-[#3C4A22]">
-              {formatUsd(Number(reservation.total))}
+              {formatUsdAmount(reservation.total)}
             </span>
           }
         />

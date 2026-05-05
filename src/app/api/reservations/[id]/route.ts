@@ -6,6 +6,7 @@ import { createValidationErrorResponse } from "@/lib/error-formatter";
 // import { serializeForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Decimal } from "@/generated/prisma/runtime/library";
+import { serializeReservationForJSON } from "@/lib/serialize-reservation-for-json";
 import {
   assertFitsSlotCapacity,
   assertTransferFreeOnSlot,
@@ -17,46 +18,6 @@ import {
   enrichReservationForApiResponse,
   getCancellationLeadStatus,
 } from "@/lib/reservation-cancellation-policy";
-
-// Función auxiliar para serializar (reutilizada, se puede mover a utils más tarde)
-function serializeReservationForJSON(obj: any): any {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-
-  if (typeof obj === "bigint") {
-    return Number(obj);
-  }
-
-  if (obj instanceof Decimal) {
-    return obj.toNumber();
-  }
-
-  if (obj instanceof Date) {
-      return obj.toISOString();
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(serializeReservationForJSON);
-  }
-
-  if (typeof obj === "object") {
-    const serialized: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-        if (key === 'time' && value instanceof Date) {
-             const hours = String(value.getUTCHours()).padStart(2, "0");
-             const minutes = String(value.getUTCMinutes()).padStart(2, "0");
-             serialized[key] = `${hours}:${minutes}`;
-        } else {
-             serialized[key] = serializeReservationForJSON(value);
-        }
-    }
-    return serialized;
-  }
-
-  return obj;
-}
-
 
 // GET /api/reservations/:id - Obtener reserva por ID
 export async function GET(

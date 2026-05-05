@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
   Table,
   TableBody,
@@ -33,7 +34,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useReservations } from "@/hooks/useReservations";
 import { useTransfers } from "@/hooks/useTransfers";
 import { reservationService, type ApiResponse, type Reservation } from "@/lib/api";
-import { formatUsd } from "@/lib/format-currency";
+import { formatUsdAmount } from "@/lib/format-currency";
 import { isAxiosLikeError } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 
@@ -95,8 +96,7 @@ export const ReservationsListView = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
-  const limit = 5;
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -183,19 +183,6 @@ export const ReservationsListView = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, stateFilter, transferFilter, dateFrom, dateTo]);
 
-  const handlePrevious = () => {
-    if (currentPage > 1) setCurrentPage((p) => p - 1);
-  };
-
-  const handleNext = () => {
-    if (pagination && currentPage < pagination.totalPages) {
-      setCurrentPage((p) => p + 1);
-    }
-  };
-
-  const canGoPrevious = currentPage > 1;
-  const canGoNext = pagination && currentPage < pagination.totalPages;
-
   const hasActiveFilters =
     debouncedSearchTerm.trim() !== "" ||
     stateFilter !== "" ||
@@ -211,11 +198,11 @@ export const ReservationsListView = () => {
           if (!open) closeCancelDialog();
         }}
       >
-        <AlertDialogContent className="max-w-md border-[#e5e2dc] bg-[#FFFCF4] sm:rounded-xl">
+        <AlertDialogContent className="max-w-md border-2 border-[#e5e2dc] bg-[#F2F1ED] shadow-lg sm:rounded-xl">
           {cancelTarget && (
             <>
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-center text-[#3C4A22]">
+                <AlertDialogTitle className="text-center text-xl font-semibold text-[#2B3418]">
                   {cancelStep === "confirm"
                     ? "Cancelar reserva"
                     : "Motivo de cancelación"}
@@ -224,7 +211,10 @@ export const ReservationsListView = () => {
 
               {cancelStep === "confirm" && (
                 <div className="space-y-4">
-                  <Alert variant="warning" className="text-left">
+                  <Alert
+                    variant="default"
+                    className="border-red-200 bg-red-50 text-left text-red-900"
+                  >
                     <div className="flex gap-2">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                       <div className="space-y-1">
@@ -238,7 +228,7 @@ export const ReservationsListView = () => {
                     </div>
                   </Alert>
                   {reservationNeedsLateCancelAck(cancelTarget) && (
-                    <Alert variant="default" className="border-amber-200 bg-amber-50 text-left">
+                    <Alert variant="default" className="border-red-200 bg-red-50 text-left text-red-900">
                       <AlertDescription>
                         {cancelTarget.late_cancellation_notice ??
                           "Anulación fuera del plazo mínimo: aplica penalidad. El cobro con el cliente queda a cargo del agente fuera de esta plataforma."}
@@ -270,14 +260,15 @@ export const ReservationsListView = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="border-[#313833] bg-transparent"
+                      className="border-2 border-[#313833] bg-transparent text-[#313833] hover:bg-transparent hover:opacity-80"
                       onClick={closeCancelDialog}
                     >
                       No
                     </Button>
                     <Button
                       type="button"
-                      className="bg-[#647a3a] text-white hover:bg-[#4f622d]"
+                      variant="destructive"
+                      className="bg-red-600 text-white hover:bg-red-700"
                       disabled={
                         reservationNeedsLateCancelAck(cancelTarget) &&
                         !acknowledgeLateCancellation
@@ -295,7 +286,10 @@ export const ReservationsListView = () => {
 
               {cancelStep === "reason" && (
                 <div className="space-y-4">
-                  <Alert variant="default" className="text-left">
+                  <Alert
+                    variant="default"
+                    className="border-[#C3CEAB] bg-[#E4E9D8] text-left text-[#2B3418]"
+                  >
                     <AlertDescription>
                       Indique el <strong>motivo de la cancelación</strong>. Es
                       obligatorio para continuar.
@@ -323,6 +317,9 @@ export const ReservationsListView = () => {
                       disabled={cancelSubmitting}
                       autoFocus
                     />
+                    <p className="text-xs text-muted-foreground">
+                      El motivo es obligatorio para confirmar la cancelación.
+                    </p>
                   </div>
                   {cancelError && (
                     <Alert variant="destructive" className="py-2">
@@ -333,7 +330,7 @@ export const ReservationsListView = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="border-[#313833] bg-transparent"
+                      className="border-2 border-[#313833] bg-transparent text-[#313833] hover:bg-transparent hover:opacity-80"
                       disabled={cancelSubmitting}
                       onClick={() => {
                         setCancelStep("confirm");
@@ -344,7 +341,8 @@ export const ReservationsListView = () => {
                     </Button>
                     <Button
                       type="button"
-                      className="bg-destructive text-white hover:bg-destructive/90"
+                      variant="destructive"
+                      className="bg-red-600 text-white hover:bg-red-700"
                       disabled={cancelSubmitting || !cancelReason.trim()}
                       onClick={() => void onConfirmCancel()}
                     >
@@ -535,7 +533,7 @@ export const ReservationsListView = () => {
                       </span>
                     </TableCell>
                     <TableCell className="text-center text-sm">
-                      {formatUsd(Number(r.total))}
+                      {formatUsdAmount(r.total)}
                     </TableCell>
                     <TableCell className="text-center">
                       <DropdownMenu>
@@ -582,31 +580,16 @@ export const ReservationsListView = () => {
             </Table>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
-            <div className="text-sm text-muted-foreground w-full text-left">
-              Mostrando {reservations.length}{" "}
-              {reservations.length === 1 ? "reserva" : "reservas"}
-              {pagination && ` • Página ${currentPage} de ${pagination.totalPages}`}
-            </div>
-            <div className="flex justify-end gap-2 w-full sm:w-auto">
-              <Button
-                type="button"
-                onClick={handlePrevious}
-                disabled={!canGoPrevious}
-                className="bg-[#3B7F73] text-white hover:bg-[#2d5f55] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#3B7F73]"
-              >
-                Anterior
-              </Button>
-              <Button
-                type="button"
-                onClick={handleNext}
-                disabled={!canGoNext}
-                className="bg-[#607536] text-white hover:bg-[#4a5c2a] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#607536]"
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
+          <PaginationControls
+            page={currentPage}
+            limit={limit}
+            total={pagination?.total ?? reservations.length}
+            onPageChange={setCurrentPage}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setCurrentPage(1);
+            }}
+          />
         </>
       )}
     </div>

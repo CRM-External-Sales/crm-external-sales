@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   SidebarInset,
@@ -9,6 +10,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hooks/useAuth";
+import { ClientShellLayout } from "@/components/layout/ClientShellLayout";
+import { isCustomerAllowedPath } from "@/components/layout/customer-paths";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -36,6 +40,58 @@ const SidebarOutsideClickClose = () => {
 };
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const { user, loading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    if (user.role === "customer" && !isCustomerAllowedPath(pathname)) {
+      router.replace("/home");
+    }
+  }, [loading, user, pathname, router]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#D6D4CB]">
+        <div
+          className="size-10 animate-pulse rounded-full bg-[#4A6741]/25"
+          aria-hidden
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#D6D4CB]">
+        <div
+          className="size-10 animate-pulse rounded-full bg-[#4A6741]/25"
+          aria-hidden
+        />
+      </div>
+    );
+  }
+
+  if (user.role === "customer" && !isCustomerAllowedPath(pathname)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#D6D4CB]">
+        <div
+          className="size-10 animate-pulse rounded-full bg-[#4A6741]/25"
+          aria-hidden
+        />
+      </div>
+    );
+  }
+
+  if (user.role === "customer") {
+    return <ClientShellLayout>{children}</ClientShellLayout>;
+  }
+
   return (
     <SidebarProvider defaultOpen={false}>
       <SidebarOutsideClickClose />
@@ -53,9 +109,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </span>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto px-6 py-10">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto px-6 py-10">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

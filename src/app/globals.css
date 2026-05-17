@@ -120,3 +120,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+.rdp-root.rdp-tour {
+  --rdp-accent-color: #607536;
+  --rdp-accent-background-color: #f0f4e6;
+}

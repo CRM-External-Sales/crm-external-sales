@@ -10,6 +10,7 @@ import { supplierService, type Supplier, type ApiResponse } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
@@ -67,6 +68,7 @@ export const View = () => {
   const serviceFilter = watch("service") ?? "";
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [singleSupplier, setSingleSupplier] = useState<Supplier | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -76,8 +78,6 @@ export const View = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
-
-  const limit = 5;
 
   const normalizeService = (value: string) => value.trim().toLowerCase();
   const formatServiceLabel = (value: string) => {
@@ -222,7 +222,6 @@ export const View = () => {
   const totalRecords = filteredSingleSupplier
     ? 1
     : pagination?.total || displaySuppliers.length;
-  const shownRecords = displaySuppliers.length;
 
   const handleEditSupplier = (supplier: Supplier) => {
     setEditingSupplier(supplier);
@@ -310,22 +309,6 @@ export const View = () => {
     setSupplierToDelete(null);
     setDeleteError(null);
   };
-
-  const handlePrevious = () => {
-    if (currentPage > 1 && !singleSupplier) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (pagination && currentPage < pagination.totalPages && !singleSupplier) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const canGoPrevious = currentPage > 1 && !singleSupplier;
-  const canGoNext =
-    pagination && currentPage < pagination.totalPages && !singleSupplier;
 
   // Si hay un proveedor en edición, mostrar el formulario de edición
   if (editingSupplier) {
@@ -507,28 +490,17 @@ export const View = () => {
               </Table>
             </div>
 
-            {/* Información de selección */}
-            <div className="mb-4 text-sm text-muted-foreground">
-              Mostrando {shownRecords} de {totalRecords} proveedor(es).
-            </div>
-
-            {/* Paginación */}
-            <div className="flex justify-end gap-2">
-              <Button
-                onClick={handlePrevious}
-                disabled={!canGoPrevious}
-                className="bg-[#3B7F73] text-white hover:bg-[#2d5f55] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#3B7F73]"
-              >
-                Anterior
-              </Button>
-              <Button
-                onClick={handleNext}
-                disabled={!canGoNext}
-                className="bg-[#607536] text-white hover:bg-[#4a5c2a] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#607536]"
-              >
-                Siguiente
-              </Button>
-            </div>
+            <PaginationControls
+              page={currentPage}
+              limit={limit}
+              total={totalRecords}
+              disabled={Boolean(singleSupplier || isIdSearchActive)}
+              onPageChange={setCurrentPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setCurrentPage(1);
+              }}
+            />
           </>
         )}
 

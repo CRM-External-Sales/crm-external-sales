@@ -1,5 +1,8 @@
 import { Decimal } from "@prisma/client/runtime/library";
-import { GranularidadTemporal } from "./report-helpers";
+import {
+  GranularidadTemporal,
+  isReservationCancelledForReports,
+} from "./report-helpers";
 import { computeEffectiveReservationState } from "./reservation-lifecycle";
 
 /**
@@ -180,7 +183,11 @@ export function agregarIngresosPorTiempo(
 ): DatosGraficoIngresosTiempo[] {
   const mapPeriodos = new Map<string, number>();
 
-  reservas.forEach((reserva) => {
+  const reservasFinancieras = reservas.filter(
+    (r) => !isReservationCancelledForReports(r.state),
+  );
+
+  reservasFinancieras.forEach((reserva) => {
     const periodo = obtenerPeriodoKey(reserva.date, granularidad);
     const total = Number(reserva.total);
     mapPeriodos.set(periodo, (mapPeriodos.get(periodo) || 0) + total);
@@ -212,7 +219,11 @@ export function agregarIngresosPorTour(
     { tour_id: bigint; tour: string; ingresos: number }
   >();
 
-  reservas.forEach((reserva) => {
+  const reservasFinancieras = reservas.filter(
+    (r) => !isReservationCancelledForReports(r.state),
+  );
+
+  reservasFinancieras.forEach((reserva) => {
     const tourId = reserva.tour_id;
     const tourName = reserva.tour?.name || `Tour ${tourId.toString()}`;
     const total = Number(reserva.total);

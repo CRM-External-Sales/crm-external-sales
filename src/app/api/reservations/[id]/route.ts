@@ -18,6 +18,7 @@ import {
   enrichReservationForApiResponse,
   getCancellationLeadStatus,
 } from "@/lib/reservation-cancellation-policy";
+import { isReservationCreatedByCurrentUser } from "@/lib/reservation-owner-match";
 
 // GET /api/reservations/:id - Obtener reserva por ID
 export async function GET(
@@ -63,12 +64,15 @@ export async function GET(
         );
       }
 
-      // Verificar permiso de acceso (Admin o Propietario)
-      if (user.role !== 'admin' && reservation.employee_user !== user.id) {
-          return NextResponse.json(
-              { success: false, error: "No tiene permiso para ver esta reserva" },
-              { status: 403 }
-          );
+      // Admin y agente: visión global. Cliente: solo reservas propias.
+      if (
+        user.role === "customer" &&
+        !isReservationCreatedByCurrentUser(reservation.employee_user, user.id)
+      ) {
+        return NextResponse.json(
+          { success: false, error: "No tiene permiso para ver esta reserva" },
+          { status: 403 },
+        );
       }
 
       return NextResponse.json({
@@ -182,19 +186,30 @@ export async function PUT(
         }
       }
 
-      const isAgentOwner =
-        user.role === "agent" && existingReservation.employee_user === user.id;
+      const agentIsOwner =
+        user.role === "agent" &&
+        isReservationCreatedByCurrentUser(
+          existingReservation.employee_user,
+          user.id,
+        );
 
-      if (isAgentOwner) {
+      if (user.role === "agent") {
         const presentKeys = Object.entries(body)
           .filter(([, v]) => v !== undefined)
           .map(([k]) => k);
-        const allowed = new Set([
-          "state",
-          "cancellation_reason",
-          "note",
-          "acknowledge_late_cancellation",
-        ]);
+        const allowed = agentIsOwner
+          ? new Set([
+              "state",
+              "cancellation_reason",
+              "note",
+              "acknowledge_late_cancellation",
+            ])
+          : new Set([
+              "state",
+              "cancellation_reason",
+              "acknowledge_late_cancellation",
+            ]);
+
         if (presentKeys.length === 0) {
           return NextResponse.json(
             { success: false, error: "No se enviaron campos para actualizar" },
@@ -206,12 +221,24 @@ export async function PUT(
             return NextResponse.json(
               {
                 success: false,
-                error:
-                  "Como agente solo puede anular la reserva (con motivo) o modificar la nota",
+                error: agentIsOwner
+                  ? "Como agente solo puede anular la reserva (con motivo) o modificar la nota"
+                  : "Como agente puede anular cualquier reserva (con motivo); solo el agente creador o un administrador pueden modificar la nota.",
               },
               { status: 403 },
             );
           }
+        }
+
+        if (!agentIsOwner && body.note !== undefined) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "No puede modificar la nota de una reserva creada por otro agente.",
+            },
+            { status: 403 },
+          );
         }
 
         const data: {
@@ -225,7 +252,7 @@ export async function PUT(
         if (body.cancellation_reason !== undefined) {
           data.cancellation_reason = body.cancellation_reason;
         }
-        if (body.note !== undefined) {
+        if (agentIsOwner && body.note !== undefined) {
           data.note = body.note;
         }
 

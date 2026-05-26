@@ -190,11 +190,8 @@ export const GET = withRole("agent")(async (request: AuthenticatedRequest, user)
       listQuery;
     const skip = (page - 1) * limit;
 
+    // Admin y agente: listado global (no filtrar por employee_user).
     const andParts: Prisma.reservationWhereInput[] = [];
-
-    if (user.role !== "admin") {
-      andParts.push({ employee_user: user.id });
-    }
 
     const stateWhere = reservationWhereForListStateParam(state);
     if (stateWhere) {

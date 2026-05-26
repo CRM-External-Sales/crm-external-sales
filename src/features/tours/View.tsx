@@ -31,12 +31,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTours } from "@/hooks/useTours";
+import { useAuth } from "@/hooks/useAuth";
 import { tourService, type Tour } from "@/lib/api";
 import { formatUsd } from "@/lib/format-currency";
+import { canManageCatalog } from "@/lib/role-permissions";
 
 import { EditTourView } from "./Edit";
 
 export const View = () => {
+  const { user } = useAuth();
+  const canCrudCatalog = canManageCatalog(user?.role);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
@@ -137,7 +142,7 @@ export const View = () => {
     setDeleteError(null);
   };
 
-  if (editingTour) {
+  if (editingTour && canCrudCatalog) {
     return (
       <EditTourView
         tour={editingTour}
@@ -151,7 +156,7 @@ export const View = () => {
     <div className="mx-auto w-full max-w-6xl rounded-xl bg-[#F2F1ED] p-6 shadow-lg">
       {/* Título */}
       <h1 className="mb-6 text-center text-2xl font-semibold text-[#3C4A22]">
-        Lista de tours
+        {canCrudCatalog ? "Lista de tours" : "Consulta de tours"}
       </h1>
 
       {/* Búsqueda */}
@@ -266,7 +271,9 @@ export const View = () => {
                   <TableHead className="text-center font-semibold text-foreground">
                     Precio
                   </TableHead>
+                  {canCrudCatalog && (
                   <TableHead className="w-[50px] text-center"></TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -305,6 +312,7 @@ export const View = () => {
                         ),
                       )}
                     </TableCell>
+                    {canCrudCatalog && (
                     <TableCell className="text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -329,6 +337,7 @@ export const View = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -349,6 +358,7 @@ export const View = () => {
       )}
 
       {/* Diálogo de confirmación de eliminación */}
+      {canCrudCatalog && (
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="bg-[#F2F1ED] border-2 border-red-200 max-w-md">
           <DialogHeader>
@@ -397,6 +407,7 @@ export const View = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 };

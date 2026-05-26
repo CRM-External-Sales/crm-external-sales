@@ -7,6 +7,7 @@ import { serializeForJSON, serializeTourForJSON } from "@/lib/utils";
 import { ZodError } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ensureInternalSupplierExists } from "@/lib/internal-supplier";
+import { userMessageFromPrismaKnownError } from "@/lib/prisma-user-facing-error";
 
 // GET /api/tours/:id - Obtener un tour por ID con sus imágenes
 export async function GET(
@@ -293,6 +294,24 @@ export async function DELETE(
         );
       }
 
+      const reservationsCount = await prisma.reservation.count({
+        where: { tour_id: BigInt(tourId) },
+      });
+
+      if (reservationsCount > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: "TOUR_HAS_RESERVATIONS",
+            error:
+              reservationsCount === 1
+                ? "No se puede eliminar el tour: tiene 1 reserva asociada. Cancele o modifique esa reserva antes de borrar."
+                : `No se puede eliminar el tour: tiene ${reservationsCount} reservas asociadas. Cancele o modifique esas reservas antes de borrar.`,
+          },
+          { status: 409 },
+        );
+      }
+
       // Eliminar todas las imágenes del storage de Supabase antes de eliminar el tour
       const imagePaths = existingTour.tour_image.map((image) => image.path);
       
@@ -329,6 +348,18 @@ export async function DELETE(
       });
     } catch (error) {
       console.error("Error eliminando tour:", error);
+
+      const mapped = userMessageFromPrismaKnownError(error);
+      if (mapped) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: mapped.message,
+            ...(mapped.code ? { code: mapped.code } : {}),
+          },
+          { status: mapped.status },
+        );
+      }
 
       return NextResponse.json(
         { success: false, error: "Error interno del servidor" },

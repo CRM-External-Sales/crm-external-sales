@@ -27,6 +27,7 @@ import { useReservation } from "@/hooks/useReservation";
 import { reservationService, type ApiResponse } from "@/lib/api";
 import { formatUsdAmount } from "@/lib/format-currency";
 import { isAxiosLikeError } from "@/lib/http-error";
+import { isReservationCreatedByCurrentUser } from "@/lib/reservation-owner-match";
 import { cn } from "@/lib/utils";
 
 const stateLabels: Record<string, string> = {
@@ -93,15 +94,23 @@ export const ReservationDetailView = () => {
     formState: { errors, isSubmitting },
   } = form;
 
-  const canEdit =
+  const ownsReservation =
+    !!user &&
+    !!reservation &&
+    isReservationCreatedByCurrentUser(reservation.employee_user, user.id);
+
+  /** Solo el administrador o el agente dueño pueden editar la nota y enviar PUT de nota. */
+  const canEditNote =
     !!user &&
     !!reservation &&
     (user.role === "admin" ||
-      (user.role === "agent" && user.id === reservation.employee_user));
+      (user.role === "agent" && ownsReservation));
 
+  /** Administrador y cualquier agente pueden anular; la nota solo dueño/admin. */
   const canCancelThis =
-    canEdit &&
-    reservation != null &&
+    !!user &&
+    !!reservation &&
+    (user.role === "admin" || user.role === "agent") &&
     reservation.state !== "cancelled" &&
     reservation.state !== "completed";
 
@@ -112,7 +121,7 @@ export const ReservationDetailView = () => {
   }, [reservation?.reservation_id, reservation?.note, reset]);
 
   const onSubmit = handleSubmit(async (data) => {
-    if (!reservation || !canEdit) return;
+    if (!reservation || !canEditNote) return;
     setSaveError(null);
     try {
       const res = await reservationService.updateReservation(
@@ -439,7 +448,7 @@ export const ReservationDetailView = () => {
         {reservation.note ? <InfoRow label="Nota" value={reservation.note} /> : null}
       </div>
 
-      {canEdit && (
+      {canEditNote && (
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
           {saveError && (
             <Alert variant="destructive">
@@ -498,10 +507,34 @@ export const ReservationDetailView = () => {
         </form>
       )}
 
-      {!canEdit && user && (
-        <p className="text-center text-sm text-muted-foreground">
-          No tiene permisos para modificar esta reserva. Solo el agente vendedor o un
-          administrador pueden editar la nota o anular la reserva.
+      {!canEditNote && canCancelThis && (
+        <div className="mt-6 flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            La nota solo la puede editar el agente que creó la reserva o un
+            administrador. Cualquier agente puede anular la reserva (por ejemplo si
+            el creador no está disponible), con motivo y respetando el plazo mínimo.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-destructive text-destructive hover:bg-destructive/10 sm:w-auto"
+            onClick={() => {
+              setCancelOpen(true);
+              setCancelStep("confirm");
+              setCancelReason("");
+              setCancelError(null);
+              setAcknowledgeLateCancellation(false);
+            }}
+          >
+            Cancelar reserva
+          </Button>
+        </div>
+      )}
+
+      {!canEditNote && !canCancelThis && user && reservation && (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          No tiene permisos para modificar esta reserva, o bien la anulación no
+          aplica en el estado actual.
         </p>
       )}
     </div>

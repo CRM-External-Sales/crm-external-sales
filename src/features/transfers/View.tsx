@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransfers } from "@/hooks/useTransfers";
+import { useAuth } from "@/hooks/useAuth";
 import { transferService, type Transfer, type ApiResponse } from "@/lib/api";
+import { canManageCatalog } from "@/lib/role-permissions";
 import { isAxiosLikeError } from "@/lib/http-error";
 import { formatUsd } from "@/lib/format-currency";
 import {
@@ -44,6 +46,9 @@ import { toast } from "sonner";
 import { EditTransferView } from "./Edit";
 
 export const View = () => {
+  const { user } = useAuth();
+  const canCrudCatalog = canManageCatalog(user?.role);
+
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -314,8 +319,8 @@ export const View = () => {
     setDeleteError(null);
   };
 
-  // Si hay un transfer en edición, mostrar el formulario de edición
-  if (editingTransfer) {
+  // Si hay un transfer en edición, mostrar el formulario de edición (solo administración de catálogo)
+  if (editingTransfer && canCrudCatalog) {
     return (
       <EditTransferView
         transfer={editingTransfer}
@@ -329,7 +334,7 @@ export const View = () => {
     <div className="mx-auto w-full max-w-6xl rounded-xl bg-[#F2F1ED] p-6 shadow-lg">
       {/* Título */}
       <h1 className="mb-6 text-center text-2xl font-semibold text-[#3C4A22]">
-        Lista de transfers
+        {canCrudCatalog ? "Lista de transfers" : "Consulta de transfers"}
       </h1>
 
       {/* Búsqueda y Filtros */}
@@ -503,7 +508,9 @@ export const View = () => {
                   <TableHead className="text-center font-semibold text-foreground">
                     Precio base
                   </TableHead>
-                  <TableHead className="w-[50px] text-center"></TableHead>
+                  {canCrudCatalog && (
+                    <TableHead className="w-[50px] text-center"></TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -546,6 +553,7 @@ export const View = () => {
                         ? formatUsd(Number(transfer.base_price))
                         : "-"}
                     </TableCell>
+                    {canCrudCatalog && (
                     <TableCell className="text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -570,6 +578,7 @@ export const View = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -591,6 +600,7 @@ export const View = () => {
       )}
 
       {/* Diálogo de confirmación de eliminación */}
+      {canCrudCatalog && (
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="bg-[#F2F1ED] border-2 border-red-200 max-w-md">
           <DialogHeader>
@@ -640,6 +650,7 @@ export const View = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 };

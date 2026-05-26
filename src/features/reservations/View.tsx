@@ -63,14 +63,9 @@ function formatReservationId(id: number | string) {
   return s.length > 10 ? s.slice(0, 8) + "…" : s;
 }
 
-function canUserCancelReservation(
-  user: { id: string; role: string } | null,
-  r: Reservation,
-) {
+function canStaffCancelReservation(user: { role: string } | null) {
   if (!user) return false;
-  if (user.role === "admin") return true;
-  if (user.role === "agent" && r.employee_user === user.id) return true;
-  return false;
+  return user.role === "admin" || user.role === "agent";
 }
 
 const cancelTextareaClass =
@@ -555,7 +550,7 @@ export const ReservationsListView = () => {
                             Ver reserva
                           </DropdownMenuItem>
                           {!authLoading &&
-                            canUserCancelReservation(user, r) &&
+                            canStaffCancelReservation(user) &&
                             r.state !== "cancelled" &&
                             r.state !== "completed" && (
                               <DropdownMenuItem

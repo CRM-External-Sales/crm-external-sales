@@ -6,7 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosLikeError } from "@/lib/http-error";
 import * as z from "zod";
 import { useSuppliers } from "@/hooks/useSuppliers";
+import { useAuth } from "@/hooks/useAuth";
 import { supplierService, type Supplier, type ApiResponse } from "@/lib/api";
+import { canManageCatalog } from "@/lib/role-permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +54,9 @@ type SupplierViewFilters = z.infer<typeof supplierViewFiltersSchema>;
 type SupplierViewFiltersInput = z.input<typeof supplierViewFiltersSchema>;
 
 export const View = () => {
+  const { user } = useAuth();
+  const canCrudCatalog = canManageCatalog(user?.role);
+
   const {
     register,
     watch,
@@ -310,8 +315,8 @@ export const View = () => {
     setDeleteError(null);
   };
 
-  // Si hay un proveedor en edición, mostrar el formulario de edición
-  if (editingSupplier) {
+  // Si hay un proveedor en edición, mostrar el formulario de edición (solo administración de catálogo)
+  if (editingSupplier && canCrudCatalog) {
     return (
       <EditSupplierView
         supplier={editingSupplier}
@@ -325,7 +330,7 @@ export const View = () => {
     <div className="mx-auto w-full max-w-6xl rounded-xl bg-[#F2F1ED] p-6 shadow-lg">
         {/* Título */}
         <h1 className="mb-6 text-center text-2xl font-semibold text-[#3C4A22]">
-          Lista de Proveedores
+          {canCrudCatalog ? "Lista de Proveedores" : "Consulta de Proveedores"}
         </h1>
 
         {/* Búsqueda */}
@@ -445,7 +450,9 @@ export const View = () => {
                     <TableHead className="text-center font-semibold text-foreground">
                       Servicio
                     </TableHead>
+                    {canCrudCatalog && (
                     <TableHead className="w-[50px] text-center"></TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -460,6 +467,7 @@ export const View = () => {
                       <TableCell className="text-center">
                         {formatServiceLabel(supplier.service)}
                       </TableCell>
+                      {canCrudCatalog && (
                       <TableCell className="text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -484,6 +492,7 @@ export const View = () => {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -505,6 +514,7 @@ export const View = () => {
         )}
 
         {/* Diálogo de confirmación de eliminación */}
+        {canCrudCatalog && (
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <DialogContent className="bg-[#F2F1ED] border-2 border-red-200 max-w-md">
             <DialogHeader>
@@ -554,6 +564,7 @@ export const View = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
     </div>
   );
 };

@@ -1,7 +1,5 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Button } from "@/components/ui/button";
+import { ClientMarketingBackNav } from "@/features/client-home/ClientMarketingBackNav";
 import { prisma } from "@/lib/prisma";
 import { serializeTourForJSON } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -69,16 +67,10 @@ export default async function TourReservationPage({ params }: Props) {
   return (
     <DashboardLayout>
       <div className="min-h-[70vh] bg-[#D6D3CC] px-4 py-6 sm:px-6">
-        <Button
-          asChild
-          variant="ghost"
-          className="mb-6 gap-1.5 px-0 text-[#313833] hover:bg-transparent hover:text-[#1a1f1b]"
-        >
-          <Link href={`/catalogo/tour/${tourId}`}>
-            <ArrowLeft className="size-4" aria-hidden />
-            Volver al tour
-          </Link>
-        </Button>
+        <ClientMarketingBackNav
+          href={`/catalogo/tour/${tourId}`}
+          navKey="navigation.backToTour"
+        />
 
         <TourReservationForm tour={tourDetail} />
       </div>

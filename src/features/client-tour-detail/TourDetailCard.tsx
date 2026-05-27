@@ -12,26 +12,28 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const CLIENT_SURFACE = "#F2F1ED";
 
-const weekdayLabels: Record<string, string> = {
-  lunes: "Lunes",
-  martes: "Martes",
-  miércoles: "Miércoles",
-  miercoles: "Miércoles",
-  jueves: "Jueves",
-  viernes: "Viernes",
-  sábado: "Sábado",
-  sabado: "Sábado",
-  domingo: "Domingo",
-};
+function normalizedWeekdayKey(day: string) {
+  return day
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
 
-export function translateWeekday(day: string): string {
-  const key = day.trim().toLowerCase();
-  return weekdayLabels[key] ?? day;
+/** Etiqueta de día para mostrar (clave interna español / normalizada). */
+function translateTourWeekday(day: string, tr: TFunction) {
+  const nk = normalizedWeekdayKey(day);
+  const k = `weekdays.${nk}` as const;
+  const translated = tr(k);
+  if (translated === k || !translated) return day.trim();
+  return translated;
 }
 
 export type ClientTourDetailSchedule = {
@@ -64,14 +66,16 @@ type TourDetailCardProps = {
   tour: ClientTourDetail;
 };
 
-function formatPrice(value: number) {
-  return new Intl.NumberFormat("es-CR", {
+function formatPrice(value: number, localeHint: string) {
+  const tag = localeHint.startsWith("en") ? "en-US" : "es-CR";
+  return new Intl.NumberFormat(tag, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
 }
 
 export function TourDetailCard({ tour }: TourDetailCardProps) {
+  const { t: tr, i18n } = useTranslation("client");
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
   const images = tour.tour_image || [];
@@ -106,7 +110,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
               {tour.name}
             </h1>
             <span className="inline-flex rounded-md border border-neutral-300 px-4 py-1 text-sm font-medium text-neutral-600">
-              {tour.type || "Categoría"}
+              {tour.type || tr("catalog.categoryFallback")}
             </span>
           </div>
 
@@ -118,55 +122,58 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
             <div className="flex items-center gap-3 text-neutral-600">
               <DollarSign className="size-5 shrink-0 text-[#607536]" />
               <span className="text-sm font-medium">
-                Desde {formatPrice(tour.base_price)} dólares
+                {tr("detail.fromPrice", {
+                  amount: formatPrice(tour.base_price, i18n.language),
+                })}
               </span>
             </div>
             <div className="flex items-center gap-3 text-neutral-600">
               <Users className="size-5 shrink-0 text-[#607536]" />
               <span className="text-sm font-medium">
-                Capacidad - {tour.spots} personas
+                {tr("detail.capacity", { spots: tour.spots })}
               </span>
             </div>
             <div className="flex items-center gap-3 text-neutral-600">
               <Clock className="size-5 shrink-0 text-[#607536]" />
               <span className="text-sm font-medium">
-                Duración {tour.duration}
+                {tr("detail.duration", { duration: tour.duration })}
               </span>
             </div>
             <div className="flex items-center gap-3 text-neutral-600">
               <Activity className="size-5 shrink-0 text-[#607536]" />
               <span className="text-sm font-medium">
-                Dificultad - {tour.difficulty}
+                {tr("detail.difficulty", { level: tour.difficulty })}
               </span>
             </div>
           </div>
 
           <div className="mb-8 flex flex-col items-start text-left">
             <h3 className="mb-3 flex items-center gap-3 text-sm font-medium text-neutral-700">
-              <Calendar className="size-5 text-[#607536]" /> Horarios
+              <Calendar className="size-5 text-[#607536]" /> {tr("detail.schedules")}
             </h3>
             <div className="flex flex-col gap-2 text-sm text-neutral-600 ml-7">
               {scheduleEntries.length > 0 ? (
                 scheduleEntries.map(([day, times]) => (
                   <div key={day}>
                     <span className="font-medium text-neutral-700 capitalize">
-                      {translateWeekday(day)}
+                      {translateTourWeekday(day, tr)}
                     </span>{" "}
                     - {times.join(" | ")}
                   </div>
                 ))
               ) : (
-                <p>N/A</p>
+                <p>{tr("detail.notAvailable")}</p>
               )}
             </div>
           </div>
 
           <div className="mb-10 flex flex-col items-start">
             <h3 className="mb-3 flex items-center gap-3 text-sm font-medium text-neutral-700">
-              <CheckSquare className="size-5 text-[#607536]" /> Requisitos
+              <CheckSquare className="size-5 text-[#607536]" />{" "}
+              {tr("detail.requirements")}
             </h3>
             <p className="text-sm text-neutral-600 text-left w-full whitespace-pre-wrap ml-7">
-              {tour.requirements || "N/A"}
+              {tour.requirements || tr("detail.notAvailable")}
             </p>
           </div>
 
@@ -176,7 +183,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
               className="rounded-md bg-[#607536] px-8 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#3C4A22]"
             >
               <Link href={`/catalogo/tour/${tour.id_tour}/reservar`}>
-                Reservar tour
+                {tr("detail.bookTour")}
               </Link>
             </Button>
           </div>
@@ -200,7 +207,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
                     onClick={handlePrev}
                     className="absolute left-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 shadow-sm transition-colors hover:bg-[#D6D4CB] md:-left-4"
                     style={{ backgroundColor: CLIENT_SURFACE }}
-                    aria-label="Anterior imagen"
+                    aria-label={tr("detail.imgPrevAria")}
                   >
                     <ChevronLeft className="size-5" />
                   </button>
@@ -208,7 +215,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
                     onClick={handleNext}
                     className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 shadow-sm transition-colors hover:bg-[#D6D4CB] md:-right-4"
                     style={{ backgroundColor: CLIENT_SURFACE }}
-                    aria-label="Siguiente imagen"
+                    aria-label={tr("detail.imgNextAria")}
                   >
                     <ChevronRight className="size-5" />
                   </button>
@@ -222,7 +229,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
                           "size-2 rounded-full transition-all",
                           idx === currentImgIndex ? "bg-neutral-400 w-4" : "bg-neutral-200",
                         )}
-                        aria-label={`Ir a imagen ${idx + 1}`}
+                        aria-label={tr("detail.imgGoToAria", { n: idx + 1 })}
                       />
                     ))}
                   </div>
@@ -242,7 +249,9 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
                 backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
               }}
             >
-              <p className="text-neutral-500 font-medium">Sin imagen</p>
+              <p className="text-neutral-500 font-medium">
+                {tr("detail.noImage")}
+              </p>
             </div>
           )}
         </div>

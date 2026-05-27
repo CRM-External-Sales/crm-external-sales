@@ -1,0 +1,108 @@
+{
+  "lang": {
+    "es": "ES",
+    "en": "EN",
+    "toggleAria": "Cambiar idioma"
+  },
+  "navigation": {
+    "backToCatalog": "Volver al catálogo",
+    "backToTour": "Volver al tour",
+    "backToHomeStart": "Volver al inicio"
+  },
+  "hero": {
+    "title": "Tu próxima aventura empieza aquí",
+    "ctaExplore": "Explorar tours"
+  },
+  "catalog": {
+    "brandLine": "Río Perdido",
+    "heading": "Catálogo de tours",
+    "searchPlaceholder": "Buscar tour por nombre",
+    "filtersAll": "Todos",
+    "empty": "No hay tours que coincidan con tu búsqueda.",
+    "duration": "Duración",
+    "fromPrice": "Desde {{amount}} dólares",
+    "exploreTour": "Explorar tour",
+    "categoryFallback": "Categoría"
+  },
+  "detail": {
+    "fromPrice": "Desde {{amount}} dólares",
+    "capacity": "Capacidad - {{spots}} personas",
+    "duration": "Duración {{duration}}",
+    "difficulty": "Dificultad - {{level}}",
+    "schedules": "Horarios",
+    "requirements": "Requisitos",
+    "bookTour": "Reservar tour",
+    "notAvailable": "N/A",
+    "noImage": "Sin imagen",
+    "imgPrevAria": "Imagen anterior",
+    "imgNextAria": "Siguiente imagen",
+    "imgGoToAria": "Ir a la imagen {{n}}"
+  },
+  "reservation": {
+    "subtitle": "Tour a reservar",
+    "fullNameLabel": "Nombre",
+    "fullNamePlaceholder": "Ingresar nombre completo",
+    "peopleLabel": "Cantidad de personas",
+    "peoplePlaceholder": "Ingrese la cantidad de personas",
+    "dateLabel": "Fecha",
+    "selectDatePlaceholder": "Seleccionar fecha",
+    "scheduleLabel": "Hora",
+    "schedulePlaceholderDateFirst": "Primero selecciona una fecha",
+    "scheduleNoSlots": "No hay horarios disponibles para este día",
+    "scheduleSelectPlaceholder": "Seleccionar la hora de la reserva",
+    "transferQuestion": "¿Requiere transfer?",
+    "yes": "Sí",
+    "no": "No",
+    "submit": "Solicitar reserva",
+    "submitting": "...",
+    "whatsappFabAria": "Preguntar por WhatsApp",
+    "whatsappFabTitle": "Preguntar por WhatsApp",
+    "toastOffline": "No se pudo enviar la solicitud. Inténtalo nuevamente",
+    "consultMessage": "¡Hola! Tengo una consulta general sobre el tour \"{{tour}}\".",
+    "waMessageIntro": "¡Hola! Me gustaría solicitar una reserva para el tour:\n\n*Tour:* {{tour}}\n*Nombre:* {{name}}\n*Personas:* {{people}}\n*Fecha:* {{date}}\n*Hora:* {{schedule}}\n*Requiere transfer:* {{transfer}}"
+  },
+  "shell": {
+    "logoAria": "Río Perdido",
+    "profileTitle": "Perfil / Cerrar sesión",
+    "logoutAskTitle": "Cerrar sesión",
+    "logoutAskDesc": "¿Deseas salir de la sesión?",
+    "logoutStay": "No, volver",
+    "logoutContinue": "Sí, continuar",
+    "logoutCredTitle": "Confirmar cierre de sesión",
+    "logoutCredDesc": "Para salir, confirma el correo y la contraseña de la cuenta.",
+    "email": "Correo",
+    "password": "Contraseña",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "cancel": "Cancelar",
+    "logoutVerify": "Verificando...",
+    "logoutButton": "Cerrar sesión",
+    "errNoSession": "No hay sesión activa.",
+    "errIncomplete": "Completa el correo y la contraseña.",
+    "errEmailMismatch": "El correo no coincide con la cuenta de esta sesión.",
+    "errBadPassword": "Contraseña incorrecta.",
+    "errWrongUser": "Las credenciales no corresponden a esta sesión.",
+    "errVerifyFailed": "No se pudo verificar. Intenta de nuevo."
+  },
+  "weekdays": {
+    "lunes": "Lunes",
+    "martes": "Martes",
+    "miercoles": "Miércoles",
+    "miércoles": "Miércoles",
+    "jueves": "Jueves",
+    "viernes": "Viernes",
+    "sabado": "Sábado",
+    "sábado": "Sábado",
+    "domingo": "Domingo"
+  },
+  "validation": {
+    "nameRequired": "El nombre es requerido",
+    "peopleRequired": "La cantidad de personas es requerida",
+    "peopleInvalid": "Ingrese una cantidad válida",
+    "peopleMin": "Mínimo 1 persona",
+    "peopleMax": "Máximo {{max}} personas para este tour",
+    "dateRequired": "La fecha es requerida",
+    "datePast": "La fecha no puede ser anterior a hoy",
+    "scheduleRequired": "Seleccione una hora"
+  }
+}

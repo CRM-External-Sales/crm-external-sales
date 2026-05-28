@@ -202,9 +202,6 @@ export const ResetPasswordView = () => {
                 </span>
               ))}
             </div>
-            {errors.password ? (
-              <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>
-            ) : null}
           </div>
 
           <div className="space-y-2">

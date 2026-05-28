@@ -9,6 +9,8 @@ import { useSuppliers } from "@/hooks/useSuppliers";
 import { useAuth } from "@/hooks/useAuth";
 import { supplierService, type Supplier, type ApiResponse } from "@/lib/api";
 import { canManageCatalog } from "@/lib/role-permissions";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,16 +59,27 @@ export const View = () => {
   const { user } = useAuth();
   const canCrudCatalog = canManageCatalog(user?.role);
 
+  const supplierFilterDefaults = {
+    company: "",
+    service: "" as "" | "Tour" | "Transfer",
+  };
+
   const {
     register,
     watch,
+    reset,
+    getValues,
     setValue,
   } = useForm<SupplierViewFiltersInput, unknown, SupplierViewFilters>({
     resolver: zodResolver(supplierViewFiltersSchema),
-    defaultValues: {
-      company: "",
-      service: "",
-    },
+    defaultValues: supplierFilterDefaults,
+  });
+
+  useFormDraft({
+    draftKey: formDraftKeys.suppliers.filters,
+    form: { watch, reset, getValues },
+    defaultValues: supplierFilterDefaults,
+    restoreMessage: false,
   });
 
   const searchTerm = watch("company") ?? "";

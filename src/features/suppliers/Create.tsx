@@ -13,6 +13,8 @@ import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
 import { CreateSupplierSchema } from "@/app/schemas/supplier.schema";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 
 const createSupplierFormSchema = CreateSupplierSchema.extend({
   corporate: z.coerce.number().int().positive("El campo corporate debe ser un número positivo"),
@@ -25,6 +27,14 @@ const createSupplierFormSchema = CreateSupplierSchema.extend({
 
 type SupplierFormValues = z.infer<typeof createSupplierFormSchema>;
 
+const supplierCreateEmptyValues = {
+  corporate: "" as unknown as number,
+  company: "",
+  phone: "",
+  email: "",
+  service: "" as "" | "Tour" | "Transfer",
+};
+
 export const CreateSupplierView = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -33,26 +43,22 @@ export const CreateSupplierView = () => {
     handleSubmit,
     reset,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(createSupplierFormSchema),
-    defaultValues: {
-      corporate: "" as unknown as number,
-      company: "",
-      phone: "",
-      email: "",
-      service: "",
-    },
+    defaultValues: supplierCreateEmptyValues,
+  });
+
+  const { clearDraft } = useFormDraft({
+    draftKey: formDraftKeys.suppliers.create,
+    form: { watch, reset, getValues },
+    defaultValues: supplierCreateEmptyValues,
   });
 
   const handleReset = () => {
-    reset({
-      corporate: "" as unknown as number,
-      company: "",
-      phone: "",
-      email: "",
-      service: "",
-    });
+    clearDraft();
+    reset(supplierCreateEmptyValues);
     setError(null);
     setSuccess(null);
   };
@@ -80,6 +86,7 @@ export const CreateSupplierView = () => {
         const message = `Proveedor ${created.company} creado correctamente.`;
         setSuccess(message);
         toast.success(message);
+        clearDraft();
         setError(null);
         reset({
           corporate: data.corporate,

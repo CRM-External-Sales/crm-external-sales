@@ -21,6 +21,8 @@ import { supplierService, type ApiResponse, type Supplier } from "@/lib/api";
 import { UpdateSupplierSchema } from "@/app/schemas/supplier.schema";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 
 const editSupplierFormSchema = UpdateSupplierSchema.extend({
   corporate: z.coerce.number().int().positive("La identificación debe ser un número positivo."),
@@ -59,6 +61,8 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
     register,
     handleSubmit,
     watch,
+    reset,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<EditSupplierFormInput, unknown, EditSupplierFormValues>({
     resolver: zodResolver(editSupplierFormSchema),
@@ -72,6 +76,23 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
           ? supplier.service
           : "",
     },
+  });
+
+  const supplierFormDefaults = {
+    corporate: supplier.corporate.toString(),
+    company: supplier.company,
+    phone: supplier.phone,
+    email: supplier.email,
+    service:
+      supplier.service === "Tour" || supplier.service === "Transfer"
+        ? supplier.service
+        : ("" as "" | "Tour" | "Transfer"),
+  };
+
+  const { clearDraft } = useFormDraft({
+    draftKey: formDraftKeys.suppliers.edit(supplier.corporate),
+    form: { watch, reset, getValues },
+    defaultValues: supplierFormDefaults,
   });
 
   const handleDelete = () => {
@@ -97,6 +118,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
         setDeleteDialogOpen(false);
         setSuccess("Proveedor eliminado correctamente.");
         toast.success("Proveedor eliminado correctamente.");
+        clearDraft();
         setTimeout(() => {
           onSuccess();
         }, 1500);
@@ -159,6 +181,7 @@ export const EditSupplierView = ({ supplier, onCancel, onSuccess }: EditSupplier
         const message = `Proveedor ${updated.company} actualizado correctamente.`;
         setSuccess(message);
         toast.success(message);
+        clearDraft();
         setError(null);
         setTimeout(() => {
           onSuccess();

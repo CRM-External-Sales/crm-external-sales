@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
         destination: "/auth/forgot-password",
         permanent: true,
       },
+      {
+        source: "/update-password",
+        destination: "/auth/reset-password",
+        permanent: false,
+      },
     ];
   },
 };

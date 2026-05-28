@@ -17,9 +17,18 @@ export const CreateTransferSchema = z.object({
     .positive("El precio base debe ser un número positivo"),
   sale_price: z
     .number()
-    .positive("El precio de venta debe ser un número positivo"),
+    .positive("El precio de venta debe ser un número positivo")
+    .optional(),
   /** Si se omite, en API se asume proveedor de operación interna. */
   supplier_corporate: z.number().int().positive().optional(),
+}).superRefine((data, ctx) => {
+  if (data.type === "Externo" && data.sale_price == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El precio de venta es requerido",
+      path: ["sale_price"],
+    });
+  }
 });
 
 // Esquema para actualizar un transfer
@@ -82,36 +91,55 @@ const zPositivePriceString = (requiredMsg: string) =>
       message: "Debe ser un número positivo",
     });
 
+const zOptionalPositivePriceString = () =>
+  z
+    .string()
+    .trim()
+    .transform((s) => (s === "" ? undefined : parseFloat(s)))
+    .refine((n) => n === undefined || (!Number.isNaN(n) && n > 0), {
+      message: "Debe ser un número positivo",
+    });
+
 /**
  * Misma forma que los inputs del cliente; al validar produce el shape de CreateTransferSchema.
  */
-export const CreateTransferFormSchema = z.object({
-  license_plate: zPositiveIntString(
-    "La placa es requerida",
-    "La placa debe ser un número entero positivo",
-  ),
-  make: z.string().trim().min(1, "La marca es requerida"),
-  model: z.string().trim().min(1, "El modelo es requerido"),
-  category: z.string().trim().min(1, "La categoría es requerida"),
-  capacity: zPositiveIntString(
-    "La capacidad es requerida",
-    "La capacidad debe ser un número entero positivo",
-  ),
-  supplier_corporate: z.preprocess(
-    (v) => {
-      if (v === "" || v == null) return undefined;
-      const s = String(v).trim();
-      if (s === "") return undefined;
-      const n = parseInt(s, 10);
-      return Number.isNaN(n) ? undefined : n;
-    },
-    z.number().int().positive().optional(),
-  ),
-  availability: z.string().trim().min(1, "La disponibilidad es requerida"),
-  type: z.string().trim().min(1, "El tipo es requerido"),
-  base_price: zPositivePriceString("El precio base es requerido"),
-  sale_price: zPositivePriceString("El precio de venta es requerido"),
-});
+export const CreateTransferFormSchema = z
+  .object({
+    license_plate: zPositiveIntString(
+      "La placa es requerida",
+      "La placa debe ser un número entero positivo",
+    ),
+    make: z.string().trim().min(1, "La marca es requerida"),
+    model: z.string().trim().min(1, "El modelo es requerido"),
+    category: z.string().trim().min(1, "La categoría es requerida"),
+    capacity: zPositiveIntString(
+      "La capacidad es requerida",
+      "La capacidad debe ser un número entero positivo",
+    ),
+    supplier_corporate: z.preprocess(
+      (v) => {
+        if (v === "" || v == null) return undefined;
+        const s = String(v).trim();
+        if (s === "") return undefined;
+        const n = parseInt(s, 10);
+        return Number.isNaN(n) ? undefined : n;
+      },
+      z.number().int().positive().optional(),
+    ),
+    availability: z.string().trim().min(1, "La disponibilidad es requerida"),
+    type: z.string().trim().min(1, "El tipo es requerido"),
+    base_price: zPositivePriceString("El precio base es requerido"),
+    sale_price: zOptionalPositivePriceString(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === "Externo" && data.sale_price == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El precio de venta es requerido",
+        path: ["sale_price"],
+      });
+    }
+  });
 
 export type CreateTransferFormValues = z.input<typeof CreateTransferFormSchema>;
 export type CreateTransferFormOutput = z.output<typeof CreateTransferFormSchema>;

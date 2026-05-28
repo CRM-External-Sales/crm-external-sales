@@ -2,40 +2,42 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
+
+import { LoginSchema, type LoginInput } from "@/app/schemas/user.schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth, useAuthForm } from "@/hooks/useAuth";
-import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
-import { supabaseClient } from "@/lib/supabase-client";
-import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
+
+const loginDefaultValues: LoginInput = {
+  email: "",
+  password: "",
+};
 
 export const View = () => {
   const router = useRouter();
   const { login, loading, error } = useAuth();
-  const { formData, formErrors, updateField, validateForm } = useAuthForm();
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event, session) => {
-      // Si el evento es recuperación de contraseña, lo detectamos acá y lo redirigimos a donde corresponde
-      if (event === "PASSWORD_RECOVERY") {
-        router.push("/update-password");
-      }
-    });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginInput>({
+    resolver: zodResolver(LoginSchema),
+    defaultValues: loginDefaultValues,
+    mode: "onSubmit",
+  });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!validateForm("login")) return;
+  const onSubmit = async (data: LoginInput) => {
     setSubmitting(true);
-    const result = await login(formData.email, formData.password);
+    const result = await login(data.email.trim(), data.password);
     setSubmitting(false);
     if (result.success) {
       router.push("/home");
@@ -63,39 +65,35 @@ export const View = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-4"
+            noValidate
+            autoComplete="on"
+          >
+            <div className="space-y-2">
               <Label htmlFor="email" className="mb-1 block">
                 Correo <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="email"
-                type="email"
+                type="text"
+                inputMode="email"
                 autoComplete="email"
-                value={formData.email}
-                onChange={(e) => updateField("email", e.target.value)}
-                className={`bg-background ${
-                  formErrors.email
-                    ? "border-red-500 focus-visible:ring-red-400"
-                    : ""
-                }`}
                 placeholder="correo@rioperdido.com"
-                aria-invalid={!!formErrors.email}
-                required
+                aria-invalid={!!errors.email}
+                className={cn(
+                  "bg-background",
+                  errors.email && "border-destructive ring-1 ring-destructive/30",
+                )}
+                {...register("email")}
               />
-              {formErrors.email ? (
-                <p className="mt-1 text-xs text-red-600">
-                  {formData.email ? formErrors.email : "Campo requerido"}
-                </p>
-              ) : null}
-              {!formData.email ? (
-                <p className="text-muted-foreground mt-1 text-xs">
-                  * Campo requerido
-                </p>
+              {errors.email ? (
+                <p className="text-xs text-destructive">{errors.email.message}</p>
               ) : null}
             </div>
 
-            <div>
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label
                   htmlFor="password"
@@ -115,35 +113,33 @@ export const View = () => {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  value={formData.password}
-                  onChange={(e) => updateField("password", e.target.value)}
-                  className={`pr-10 ${
-                    formErrors.password
-                      ? "border-red-500 focus-visible:ring-red-400"
-                      : ""
-                  }`}
                   placeholder="Ingresa tu contraseña"
-                  aria-invalid={!!formErrors.password}
-                  required
+                  aria-invalid={!!errors.password}
+                  className={cn(
+                    "pr-10",
+                    errors.password && "border-destructive ring-1 ring-destructive/30",
+                  )}
+                  {...register("password")}
                 />
                 <button
                   type="button"
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-label={
+                    showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
                   aria-pressed={showPassword}
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-neutral-600 hover:bg-neutral-100"
                 >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
                 </button>
               </div>
-              {formErrors.password ? (
-                <p className="mt-1 text-xs text-red-600">
-                  {formData.password ? formErrors.password : "Campo requerido"}
-                </p>
-              ) : null}
-              {!formData.password ? (
-                <p className="text-muted-foreground mt-1 text-xs">
-                  * Campo requerido
+              {errors.password ? (
+                <p className="text-xs text-destructive">
+                  {errors.password.message}
                 </p>
               ) : null}
             </div>
@@ -167,5 +163,3 @@ export const View = () => {
     </div>
   );
 };
-
-

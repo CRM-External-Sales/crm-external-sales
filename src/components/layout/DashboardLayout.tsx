@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
@@ -12,8 +12,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { ClientShellLayout } from "@/components/layout/ClientShellLayout";
-import { isCustomerAllowedPath } from "@/components/layout/customer-paths";
-import { isPathForbiddenForAgent } from "@/lib/role-permissions";
+import { RouteAccessSpinner } from "@/components/layout/RouteAccessSpinner";
+import { resolveRouteAccess } from "@/lib/route-access";
+import type { AppRole } from "@/lib/role-permissions";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,64 +46,24 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
 
+  const access = useMemo(
+    () => resolveRouteAccess(user?.role as AppRole | undefined, pathname),
+    [user?.role, pathname],
+  );
+
   useEffect(() => {
     if (loading) return;
-    if (!user) {
-      router.replace("/login");
-      return;
+    if (!access.allowed && "redirectTo" in access) {
+      router.replace(access.redirectTo);
     }
-    if (user.role === "customer" && !isCustomerAllowedPath(pathname)) {
-      router.replace("/home");
-      return;
-    }
+  }, [loading, access, router]);
 
-    if (user.role === "agent" && isPathForbiddenForAgent(pathname)) {
-      router.replace("/reservas");
-    }
-  }, [loading, user, pathname, router]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#D6D4CB]">
-        <div
-          className="size-10 animate-pulse rounded-full bg-[#4A6741]/25"
-          aria-hidden
-        />
-      </div>
-    );
+  if (loading || !access.allowed) {
+    return <RouteAccessSpinner />;
   }
 
   if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#D6D4CB]">
-        <div
-          className="size-10 animate-pulse rounded-full bg-[#4A6741]/25"
-          aria-hidden
-        />
-      </div>
-    );
-  }
-
-  if (user.role === "customer" && !isCustomerAllowedPath(pathname)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#D6D4CB]">
-        <div
-          className="size-10 animate-pulse rounded-full bg-[#4A6741]/25"
-          aria-hidden
-        />
-      </div>
-    );
-  }
-
-  if (user.role === "agent" && isPathForbiddenForAgent(pathname)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#D6D4CB]">
-        <div
-          className="size-10 animate-pulse rounded-full bg-[#4A6741]/25"
-          aria-hidden
-        />
-      </div>
-    );
+    return <RouteAccessSpinner />;
   }
 
   if (user.role === "customer") {

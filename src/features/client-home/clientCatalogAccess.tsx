@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { getRoleHomePath } from "@/lib/route-access";
+import type { AppRole } from "@/lib/role-permissions";
 
 /** `customer` debe abrir `/home` en esta pestaña antes de ver rutas bajo `/catalogo`. */
 const CLIENT_HOME_GATE_KEY = "rp_client_visited_home";
@@ -50,8 +52,8 @@ type ClientCatalogAccessGateProps = {
 };
 
 /**
- * Gate único para `/catalogo` y subrutas: rol `customer` sin pasar por `/home`
- * en esta pestaña → redirección a `/home`.
+ * `/catalogo` es solo para clientes. Admin/agente → redirección a su home.
+ * Cliente sin pasar por `/home` en la pestaña → `/home`.
  */
 export function ClientCatalogAccessGate({ children }: ClientCatalogAccessGateProps) {
   const { user, loading } = useAuth();
@@ -60,18 +62,28 @@ export function ClientCatalogAccessGate({ children }: ClientCatalogAccessGatePro
 
   useEffect(() => {
     if (loading) return;
-    if (user?.role !== "customer") {
-      setAllow(true);
+
+    const role = user?.role as AppRole | undefined;
+
+    if (role && role !== "customer") {
+      router.replace(getRoleHomePath(role));
       return;
     }
+
+    if (role !== "customer") {
+      router.replace("/login");
+      return;
+    }
+
     if (hasClientHomeVisited()) {
       setAllow(true);
       return;
     }
+
     router.replace("/home");
   }, [loading, user, router]);
 
   if (loading) return <GateSpinner />;
-  if (user?.role === "customer" && !allow) return <GateSpinner />;
+  if (user?.role !== "customer" || !allow) return <GateSpinner />;
   return <>{children}</>;
 }

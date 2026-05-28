@@ -29,19 +29,4 @@ export function canCreateOrListReservations(
   return role === "admin" || role === "agent";
 }
 
-/** Rutas prohibidas si el usuario es agente (evita navegación directa a pantallas solo admin). */
-export function isPathForbiddenForAgent(pathname: string): boolean {
-  const path = (pathname.split("?")[0] ?? "").trim() || "/";
-  const forbiddenPrefixes = [
-    "/usuarios",
-    "/tours/crear",
-    "/transfers/crear",
-    "/proveedores/crear",
-    "/reportes",
-  ] as const;
-
-  for (const prefix of forbiddenPrefixes) {
-    if (path === prefix || path.startsWith(`${prefix}/`)) return true;
-  }
-  return false;
-}
+export { isPathForbiddenForAgent } from "@/lib/route-access";

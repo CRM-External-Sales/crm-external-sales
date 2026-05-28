@@ -19,6 +19,23 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Supabase Auth Error (forgot-password):", error);
+
+      const rateLimited =
+        error.status === 429 ||
+        error.code === "over_email_send_rate_limit" ||
+        /rate limit/i.test(error.message);
+
+      if (rateLimited) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Se alcanzó el límite de envío de correos de Supabase. Espera unos minutos (o hasta 1 hora) e inténtalo de nuevo, o revisa el correo que ya se envió antes.",
+          },
+          { status: 429 },
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,

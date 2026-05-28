@@ -56,14 +56,22 @@ export const CreateUserSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  email: z.string().email({ message: "Email inválido" }),
-  password: z.string().min(1, "La contraseña es requerida"),
+  email: z
+    .string({ message: "El correo es requerido" })
+    .trim()
+    .min(1, "El correo es requerido")
+    .email("Ingresa un correo válido"),
+  password: z
+    .string({ message: "La contraseña es requerida" })
+    .min(1, "La contraseña es requerida"),
 });
 
 export const ChangePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "La contraseña actual es requerida"),
+  currentPassword: z
+    .string({ message: "La contraseña actual es requerida" })
+    .min(1, "La contraseña actual es requerida"),
   newPassword: z
-    .string()
+    .string({ message: "La nueva contraseña es requerida" })
     .min(8, "La nueva contraseña debe tener al menos 8 caracteres")
     .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
     .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
@@ -74,8 +82,22 @@ export const ChangePasswordSchema = z.object({
     ),
 });
 
+/** Formulario de cambio de contraseña (incluye confirmación en cliente) */
+export const ChangePasswordFormSchema = ChangePasswordSchema.extend({
+  confirmPassword: z
+    .string({ message: "Debes confirmar la contraseña" })
+    .min(1, "Debes confirmar la contraseña"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
+});
+
 export const ForgotPasswordSchema = z.object({
-  email: z.string().email({ message: "Email inválido" }),
+  email: z
+    .string({ message: "El correo es requerido" })
+    .trim()
+    .min(1, "El correo es requerido")
+    .email("Ingresa un correo válido"),
 });
 
 export const ResetPasswordSchema = z.object({
@@ -137,6 +159,7 @@ export type SignUpInput = z.infer<typeof SignUpSchema>;
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+export type ChangePasswordFormInput = z.infer<typeof ChangePasswordFormSchema>;
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;

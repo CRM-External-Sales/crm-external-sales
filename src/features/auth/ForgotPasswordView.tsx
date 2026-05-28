@@ -3,22 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import z from "zod";
+import { ForgotPasswordSchema, type ForgotPasswordInput } from "@/app/schemas/user.schema";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
-
-const ForgotPasswordFormSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .min(1, "El correo es requerido")
-    .email("Ingresa un correo válido"),
-});
-
-type ForgotPasswordFormValues = z.infer<typeof ForgotPasswordFormSchema>;
 
 export const ForgotPasswordView = () => {
   const { forgotPassword, loading } = useAuth();
@@ -45,12 +36,12 @@ export const ForgotPasswordView = () => {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<ForgotPasswordFormValues>({
-    resolver: zodResolver(ForgotPasswordFormSchema),
+  } = useForm<ForgotPasswordInput>({
+    resolver: zodResolver(ForgotPasswordSchema),
     defaultValues: { email: "" },
   });
 
-  const onSubmit = async (values: ForgotPasswordFormValues) => {
+  const onSubmit = async (values: ForgotPasswordInput) => {
     if (isRedirecting) return;
     setServerError(null);
     setSent(false);
@@ -101,13 +92,19 @@ export const ForgotPasswordView = () => {
             </Label>
             <Input
               id="email"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               placeholder="tu@correo.com"
-              className="bg-white"
+              aria-invalid={!!errors.email}
+              className={cn(
+                "bg-white",
+                errors.email && "border-destructive ring-1 ring-destructive/30",
+              )}
               {...register("email")}
             />
             {errors.email ? (
-              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+              <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>
             ) : null}
           </div>
 

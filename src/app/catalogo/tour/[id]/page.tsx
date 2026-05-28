@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveTourImageUrl } from "@/lib/tour-image-url";
 import { serializeTourForJSON } from "@/lib/utils";
+import { ClientWhatsAppMessageScope } from "@/features/client-home/ClientWhatsAppMessageContext";
 import { TourDetailCard, type ClientTourDetail } from "@/features/client-tour-detail/TourDetailCard";
 import { notFound } from "next/navigation";
 
@@ -109,7 +110,11 @@ export default async function ClientTourDetailPage({ params }: Props) {
           </Link>
         </Button>
 
-        <TourDetailCard tour={tourDetail} />
+        <ClientWhatsAppMessageScope
+          message={`¡Hola! Tengo una consulta sobre el tour "${tourDetail.name}".`}
+        >
+          <TourDetailCard tour={tourDetail} />
+        </ClientWhatsAppMessageScope>
       </div>
     </DashboardLayout>
   );

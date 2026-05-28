@@ -9,6 +9,8 @@ import { transferService, type Transfer, type ApiResponse } from "@/lib/api";
 import { canManageCatalog } from "@/lib/role-permissions";
 import { isAxiosLikeError } from "@/lib/http-error";
 import { formatUsd } from "@/lib/format-currency";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 import {
   TransferViewFiltersSchema,
   transferViewFiltersDefaultValues,
@@ -64,14 +66,24 @@ export const View = () => {
 
   const normalizeText = (value: string) => value.trim().toLowerCase();
 
+  const filterDefaults = transferViewFiltersDefaultValues();
   const {
     register,
     watch,
+    reset,
+    getValues,
     formState: { errors },
   } = useForm<TransferViewFiltersValues>({
     resolver: zodResolver(TransferViewFiltersSchema),
-    defaultValues: transferViewFiltersDefaultValues(),
+    defaultValues: filterDefaults,
     mode: "onChange",
+  });
+
+  useFormDraft({
+    draftKey: formDraftKeys.transfers.filters,
+    form: { watch, reset, getValues },
+    defaultValues: filterDefaults,
+    restoreMessage: false,
   });
 
   const searchTerm = watch("searchTerm") ?? "";

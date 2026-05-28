@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { resolveTourImageUrl } from "@/lib/tour-image-url";
+import { useTranslation } from "react-i18next";
 import type { CatalogTour } from "./types";
 import { CATALOG_SECTION_ID, clientTourDetailPath } from "./constants";
 
@@ -16,8 +17,8 @@ const CLIENT_SURFACE = "#F2F1ED";
 const CATALOG_ACTION_BUTTON_CLASS =
   "h-10 shrink-0 gap-1.5 rounded-xl border-[#607536]/25 px-4 text-[#313833] shadow-sm";
 
-function formatPrice(value: number) {
-  return new Intl.NumberFormat("es-CR", {
+function formatPrice(value: number, localeTag: string) {
+  return new Intl.NumberFormat(localeTag.startsWith("en") ? "en-US" : "es-CR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
@@ -36,17 +37,19 @@ type TourCatalogProps = {
 };
 
 export function TourCatalog({ tours }: TourCatalogProps) {
+  const { t: tr, i18n } = useTranslation("client");
+  const sortLocale = i18n.language.startsWith("en") ? "en" : "es";
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | "all">("all");
 
   const categories = useMemo(() => {
-    const set = new Set<string>();
+    const sorted = new Set<string>();
     for (const tour of tours) {
       const c = tour.type?.trim();
-      if (c) set.add(c);
+      if (c) sorted.add(c);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
-  }, [tours]);
+    return Array.from(sorted).sort((a, b) => a.localeCompare(b, sortLocale));
+  }, [tours, sortLocale]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -68,13 +71,13 @@ export function TourCatalog({ tours }: TourCatalogProps) {
       <div className="mx-auto mb-8 flex max-w-7xl flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#5A665D]">
-            Río Perdido
+            {tr("catalog.brandLine")}
           </p>
           <h2
             id="catalog-heading"
             className="text-2xl font-semibold tracking-tight text-[#1A1F1B] sm:text-[2rem]"
           >
-            Catálogo de tours
+            {tr("catalog.heading")}
           </h2>
         </div>
 
@@ -88,7 +91,7 @@ export function TourCatalog({ tours }: TourCatalogProps) {
           >
             <Link href="/home">
               <Home className="size-4" aria-hidden />
-              Volver al inicio
+              {tr("navigation.backToHomeStart")}
             </Link>
           </Button>
         </div>
@@ -103,9 +106,9 @@ export function TourCatalog({ tours }: TourCatalogProps) {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar tour por nombre"
+            placeholder={tr("catalog.searchPlaceholder")}
             className="h-10 rounded-xl border-0 bg-transparent px-3 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-11"
-            aria-label="Buscar tour por nombre"
+            aria-label={tr("catalog.searchPlaceholder")}
           />
         </div>
 
@@ -122,7 +125,7 @@ export function TourCatalog({ tours }: TourCatalogProps) {
                 category === "all" ? CATEGORY_CHIP_ACTIVE : CATEGORY_CHIP_DEFAULT,
             }}
           >
-            Todos
+            {tr("catalog.filtersAll")}
           </button>
           {categories.map((c) => {
             const active = category === c;
@@ -152,7 +155,7 @@ export function TourCatalog({ tours }: TourCatalogProps) {
             className="rounded-xl px-4 py-8 text-center text-neutral-600"
             style={{ backgroundColor: `${CLIENT_SURFACE}CC` }}
           >
-            No hay tours que coincidan con tu búsqueda.
+            {tr("catalog.empty")}
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -199,19 +202,21 @@ export function TourCatalog({ tours }: TourCatalogProps) {
                           {tour.name}
                         </h3>
                         <span className="rounded-md border border-[#607536]/40 px-2 py-0.5 text-xs font-medium text-[#313833]">
-                          {tour.type?.trim() || "Categoría"}
+                          {tour.type?.trim() || tr("catalog.categoryFallback")}
                         </span>
                       </div>
                       <p className="flex items-center gap-2 text-sm text-neutral-600">
                         <Clock className="size-4 shrink-0 text-[#607536]" aria-hidden />
                         <span>
-                          Duración: {tour.duration}
+                          {tr("catalog.duration")}: {tour.duration}
                         </span>
                       </p>
                       <p className="flex items-center gap-2 text-sm text-neutral-600">
                         <DollarSign className="size-4 shrink-0 text-[#607536]" aria-hidden />
                         <span>
-                          Desde {formatPrice(tour.base_price)} dólares
+                          {tr("catalog.fromPrice", {
+                            amount: formatPrice(tour.base_price, i18n.language),
+                          })}
                         </span>
                       </p>
                       <div className="mt-auto flex justify-center pt-2">
@@ -220,7 +225,7 @@ export function TourCatalog({ tours }: TourCatalogProps) {
                           className="rounded-lg bg-[#607536] px-6 py-2 font-semibold text-white hover:bg-[#3C4A22]"
                         >
                           <Link href={clientTourDetailPath(tour.id_tour)}>
-                            Explorar tour
+                            {tr("catalog.exploreTour")}
                           </Link>
                         </Button>
                       </div>

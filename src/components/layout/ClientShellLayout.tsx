@@ -17,8 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ClientLangSwitcher } from "@/components/i18n/ClientLangSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 const CLIENT_SURFACE = "#F5F2EC";
 
@@ -36,6 +38,7 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useTranslation("client");
   const isHome = pathname === "/home";
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [logoutStep, setLogoutStep] = useState<LogoutStep>("confirm");
@@ -74,7 +77,7 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
     setLogoutError(null);
 
     if (!user?.email) {
-      setLogoutError("No hay sesión activa.");
+      setLogoutError(t("shell.errNoSession"));
       return;
     }
 
@@ -82,12 +85,12 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
     const typedEmail = normalizeEmail(logoutEmail);
 
     if (!typedEmail || !logoutPassword) {
-      setLogoutError("Completa el correo y la contraseña.");
+      setLogoutError(t("shell.errIncomplete"));
       return;
     }
 
     if (typedEmail !== sessionEmail) {
-      setLogoutError("El correo no coincide con la cuenta de esta sesión.");
+      setLogoutError(t("shell.errEmailMismatch"));
       return;
     }
 
@@ -99,12 +102,12 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
       });
 
       if (!res.success || !res.data?.user) {
-        setLogoutError(res.error || "Contraseña incorrecta.");
+        setLogoutError(res.error || t("shell.errBadPassword"));
         return;
       }
 
       if (res.data.user.id !== user.id) {
-        setLogoutError("Las credenciales no corresponden a esta sesión.");
+        setLogoutError(t("shell.errWrongUser"));
         return;
       }
 
@@ -112,7 +115,7 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
       setLogoutOpen(false);
       router.push("/login");
     } catch {
-      setLogoutError("No se pudo verificar. Intenta de nuevo.");
+      setLogoutError(t("shell.errVerifyFailed"));
     } finally {
       setLogoutSubmitting(false);
     }
@@ -121,15 +124,15 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
   return (
     <div className="relative flex min-h-screen flex-col bg-[#D6D4CB]">
       {!isHome && (
-        <header className="z-50 flex h-[4.5rem] w-full shrink-0 items-center justify-between bg-[#313833] px-6 text-white shadow-sm">
+        <header className="z-50 flex h-[4.5rem] w-full shrink-0 items-center justify-between gap-3 bg-[#313833] px-6 text-white shadow-sm">
           <Link
             href="/catalogo"
-            className="flex items-center rounded-md transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#313833]"
+            className="flex min-w-0 shrink items-center rounded-md transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#313833]"
             aria-label="Ir al catálogo de tours"
           >
             <Image
               src="/logo-isotipo.png"
-              alt="Río Perdido"
+              alt={t("shell.logoAria")}
               width={184}
               height={40}
               priority
@@ -137,11 +140,13 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
             />
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <ClientLangSwitcher variant="onDarkShell" />
             <button
+              type="button"
               onClick={openLogoutDialog}
               className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5 hover:text-neutral-200"
-              title="Perfil / Cerrar sesión"
+              title={t("shell.profileTitle")}
             >
               <CircleUserRound className="size-7" strokeWidth={1.5} />
             </button>
@@ -161,9 +166,9 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
           {logoutStep === "confirm" ? (
             <>
               <DialogHeader>
-                <DialogTitle>Cerrar sesión</DialogTitle>
+                <DialogTitle>{t("shell.logoutAskTitle")}</DialogTitle>
                 <DialogDescription>
-                  ¿Deseas salir de la sesión?
+                  {t("shell.logoutAskDesc")}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2 sm:gap-0">
@@ -172,29 +177,29 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
                   variant="outline"
                   onClick={() => closeLogoutDialog(false)}
                 >
-                  No, volver
+                  {t("shell.logoutStay")}
                 </Button>
                 <Button
                   type="button"
                   className="bg-[#4A6741] hover:bg-[#3d5636]"
                   onClick={goToLogoutCredentials}
                 >
-                  Sí, continuar
+                  {t("shell.logoutContinue")}
                 </Button>
               </DialogFooter>
             </>
           ) : (
             <form onSubmit={handleConfirmLogout}>
               <DialogHeader>
-                <DialogTitle>Confirmar cierre de sesión</DialogTitle>
+                <DialogTitle>{t("shell.logoutCredTitle")}</DialogTitle>
                 <DialogDescription>
-                  Para salir, confirma el correo y la contraseña de la cuenta.
+                  {t("shell.logoutCredDesc")}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="grid gap-4 py-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="client-logout-email">Correo</Label>
+                  <Label htmlFor="client-logout-email">{t("shell.email")}</Label>
                   <Input
                     id="client-logout-email"
                     type="email"
@@ -207,7 +212,9 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="client-logout-password">Contraseña</Label>
+                  <Label htmlFor="client-logout-password">
+                    {t("shell.password")}
+                  </Label>
                   <div className="relative">
                     <Input
                       id="client-logout-password"
@@ -223,8 +230,8 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
                       type="button"
                       aria-label={
                         showLogoutPassword
-                          ? "Ocultar contraseña"
-                          : "Mostrar contraseña"
+                          ? t("shell.hidePassword")
+                          : t("shell.showPassword")
                       }
                       className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-neutral-600 hover:bg-neutral-100"
                       onClick={() => setShowLogoutPassword((v) => !v)}
@@ -249,14 +256,16 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
                   onClick={() => closeLogoutDialog(false)}
                   disabled={logoutSubmitting}
                 >
-                  Cancelar
+                  {t("shell.cancel")}
                 </Button>
                 <Button
                   type="submit"
                   className="bg-[#4A6741] hover:bg-[#3d5636]"
                   disabled={logoutSubmitting}
                 >
-                  {logoutSubmitting ? "Verificando..." : "Cerrar sesión"}
+                  {logoutSubmitting
+                    ? t("shell.logoutVerify")
+                    : t("shell.logoutButton")}
                 </Button>
               </DialogFooter>
             </form>

@@ -1,7 +1,5 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Button } from "@/components/ui/button";
+import { ClientMarketingBackNav } from "@/features/client-home/ClientMarketingBackNav";
 import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveTourImageUrl } from "@/lib/tour-image-url";
@@ -99,16 +97,7 @@ export default async function ClientTourDetailPage({ params }: Props) {
   return (
     <DashboardLayout>
       <div className="min-h-[70vh] bg-[#D6D3CC] px-4 py-6 sm:px-6">
-        <Button
-          asChild
-          variant="ghost"
-          className="mb-6 gap-1.5 px-0 text-[#313833] hover:bg-transparent hover:text-[#1a1f1b]"
-        >
-          <Link href="/catalogo">
-            <ArrowLeft className="size-4" aria-hidden />
-            Volver al catálogo
-          </Link>
-        </Button>
+        <ClientMarketingBackNav href="/catalogo" navKey="navigation.backToCatalog" />
 
         <ClientWhatsAppMessageScope
           message={`¡Hola! Tengo una consulta sobre el tour "${tourDetail.name}".`}

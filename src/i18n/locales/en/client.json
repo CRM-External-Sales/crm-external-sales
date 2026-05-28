@@ -1,0 +1,108 @@
+{
+  "lang": {
+    "es": "ES",
+    "en": "EN",
+    "toggleAria": "Change language"
+  },
+  "navigation": {
+    "backToCatalog": "Back to catalog",
+    "backToTour": "Back to tour",
+    "backToHomeStart": "Back to home"
+  },
+  "hero": {
+    "title": "Your next adventure starts here",
+    "ctaExplore": "Explore tours"
+  },
+  "catalog": {
+    "brandLine": "Río Perdido",
+    "heading": "Tour catalog",
+    "searchPlaceholder": "Search tours by name",
+    "filtersAll": "All",
+    "empty": "No tours match your search.",
+    "duration": "Duration",
+    "fromPrice": "From {{amount}} USD",
+    "exploreTour": "Explore tour",
+    "categoryFallback": "Category"
+  },
+  "detail": {
+    "fromPrice": "From {{amount}} USD",
+    "capacity": "Capacity — {{spots}} guests",
+    "duration": "Duration {{duration}}",
+    "difficulty": "Difficulty — {{level}}",
+    "schedules": "Schedules",
+    "requirements": "Requirements",
+    "bookTour": "Book tour",
+    "notAvailable": "N/A",
+    "noImage": "No image",
+    "imgPrevAria": "Previous image",
+    "imgNextAria": "Next image",
+    "imgGoToAria": "Go to image {{n}}"
+  },
+  "reservation": {
+    "subtitle": "Tour you are booking",
+    "fullNameLabel": "Full name",
+    "fullNamePlaceholder": "Enter your full name",
+    "peopleLabel": "Number of guests",
+    "peoplePlaceholder": "Enter number of guests",
+    "dateLabel": "Date",
+    "selectDatePlaceholder": "Select a date",
+    "scheduleLabel": "Time",
+    "schedulePlaceholderDateFirst": "Select a date first",
+    "scheduleNoSlots": "No times available for this day",
+    "scheduleSelectPlaceholder": "Choose a time",
+    "transferQuestion": "Need transfer?",
+    "yes": "Yes",
+    "no": "No",
+    "submit": "Submit request",
+    "submitting": "...",
+    "whatsappFabAria": "Ask via WhatsApp",
+    "whatsappFabTitle": "Ask via WhatsApp",
+    "toastOffline": "Could not send the request. Please try again",
+    "consultMessage": "Hi! I have a general question about the \"{{tour}}\" tour.",
+    "waMessageIntro": "Hi! I'd like to request a booking for:\n\n*Tour:* {{tour}}\n*Name:* {{name}}\n*Guests:* {{people}}\n*Date:* {{date}}\n*Time:* {{schedule}}\n*Transfer needed:* {{transfer}}"
+  },
+  "shell": {
+    "logoAria": "Río Perdido",
+    "profileTitle": "Profile / Sign out",
+    "logoutAskTitle": "Sign out",
+    "logoutAskDesc": "Do you want to sign out?",
+    "logoutStay": "Stay",
+    "logoutContinue": "Yes, continue",
+    "logoutCredTitle": "Confirm sign out",
+    "logoutCredDesc": "Enter your email and password to confirm sign out.",
+    "email": "Email",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "cancel": "Cancel",
+    "logoutVerify": "Verifying…",
+    "logoutButton": "Sign out",
+    "errNoSession": "No active session.",
+    "errIncomplete": "Fill in email and password.",
+    "errEmailMismatch": "Email doesn't match this account.",
+    "errBadPassword": "Incorrect password.",
+    "errWrongUser": "Those credentials don't match this session.",
+    "errVerifyFailed": "Couldn't verify. Please try again."
+  },
+  "weekdays": {
+    "lunes": "Monday",
+    "martes": "Tuesday",
+    "miercoles": "Wednesday",
+    "miércoles": "Wednesday",
+    "jueves": "Thursday",
+    "viernes": "Friday",
+    "sabado": "Saturday",
+    "sábado": "Saturday",
+    "domingo": "Sunday"
+  },
+  "validation": {
+    "nameRequired": "Name is required",
+    "peopleRequired": "Number of guests is required",
+    "peopleInvalid": "Enter a valid number",
+    "peopleMin": "At least 1 guest",
+    "peopleMax": "Up to {{max}} guests for this tour",
+    "dateRequired": "Date is required",
+    "datePast": "Date cannot be in the past",
+    "scheduleRequired": "Select a time"
+  }
+}

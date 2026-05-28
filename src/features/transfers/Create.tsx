@@ -96,7 +96,7 @@ export const CreateTransferView = () => {
         capacity: data.capacity,
         type: data.type,
         base_price: data.base_price,
-        sale_price: data.sale_price,
+        sale_price: data.sale_price ?? data.base_price,
       });
 
       if (response.success && response.data) {

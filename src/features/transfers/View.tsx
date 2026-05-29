@@ -100,14 +100,16 @@ export const View = () => {
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
-  // Determinar si buscar por placa (numérico)
-  const isNumericSearch = debouncedSearchTerm ? /^\d+$/.test(debouncedSearchTerm.trim()) : false;
+  // Búsqueda exacta por placa (letras y números)
+  const isLicensePlateSearch = debouncedSearchTerm
+    ? /^[A-Za-z0-9]+$/.test(debouncedSearchTerm.trim())
+    : false;
   const hasSearchValidationError = !!errors.searchTerm;
 
   // Usar el hook para búsqueda normal (por make)
   const shouldSearchByMake = 
     debouncedSearchTerm && 
-    !isNumericSearch &&
+    !isLicensePlateSearch &&
     !hasSearchValidationError &&
     debouncedSearchTerm.trim().length >= 1;
 
@@ -159,13 +161,13 @@ export const View = () => {
       return;
     }
 
-    const licensePlateNum = Number(licensePlate.trim());
-
     setSearchLoading(true);
     setSearchError(null);
 
     try {
-      const response = await transferService.getTransferByLicensePlate(licensePlateNum);
+      const response = await transferService.getTransferByLicensePlate(
+        licensePlate.trim().toUpperCase(),
+      );
       if (response.success && response.data) {
         setSingleTransfer(response.data);
         setSearchError(null);
@@ -203,7 +205,7 @@ export const View = () => {
     }
 
     if (debouncedSearchTerm.trim()) {
-      if (isNumericSearch) {
+      if (isLicensePlateSearch) {
         searchByLicensePlate(debouncedSearchTerm.trim());
       } else {
         setCurrentPage(1);
@@ -215,17 +217,17 @@ export const View = () => {
       setSearchError(null);
       setCurrentPage(1);
     }
-  }, [debouncedSearchTerm, isNumericSearch, hasSearchValidationError]);
+  }, [debouncedSearchTerm, isLicensePlateSearch, hasSearchValidationError]);
 
   // Resetear cuando cambian los filtros
   useEffect(() => {
-    if (debouncedSearchTerm?.trim() && isNumericSearch) {
+    if (debouncedSearchTerm?.trim() && isLicensePlateSearch) {
       searchByLicensePlate(debouncedSearchTerm.trim());
       return;
     }
     setCurrentPage(1);
     setSingleTransfer(null);
-  }, [categoryFilter, availabilityFilter, makeFilter, typeFilter, debouncedSearchTerm, isNumericSearch]);
+  }, [categoryFilter, availabilityFilter, makeFilter, typeFilter, debouncedSearchTerm, isLicensePlateSearch]);
 
   // Filtrar transfer único si hay filtros aplicados
   const filteredSingleTransfer =
@@ -242,7 +244,7 @@ export const View = () => {
         : null
       : singleTransfer;
 
-  const isIdSearchActive = !!debouncedSearchTerm?.trim() && isNumericSearch;
+  const isIdSearchActive = !!debouncedSearchTerm?.trim() && isLicensePlateSearch;
   const displayTransfers = filteredSingleTransfer
     ? [filteredSingleTransfer]
     : isIdSearchActive
@@ -359,7 +361,7 @@ export const View = () => {
           <Input
             id="search"
             type="text"
-            placeholder="Ej.: placa (solo números) o marca del vehículo"
+            placeholder="Ej.: placa (letras y números) o marca del vehículo"
             className="w-full"
             {...register("searchTerm", {
               onChange: () => {
@@ -529,7 +531,7 @@ export const View = () => {
                 {displayTransfers.map((transfer: Transfer) => (
                   <TableRow key={transfer.license_plate}>
                     <TableCell className="text-center">
-                      {transfer.license_plate.toString()}
+                      {transfer.license_plate}
                     </TableCell>
                     <TableCell className="text-center">{transfer.make}</TableCell>
                     <TableCell className="text-center">{transfer.model}</TableCell>
@@ -623,7 +625,7 @@ export const View = () => {
               {transferToDelete ? (
                 <>
                   Estás a punto de eliminar el transfer con placa{" "}
-                  <strong className="text-[#1A1F1B]">{transferToDelete.license_plate.toString()}</strong>.
+                  <strong className="text-[#1A1F1B]">{transferToDelete.license_plate}</strong>.
                   <br />
                   <br />
                   <span className="text-red-600 font-medium">

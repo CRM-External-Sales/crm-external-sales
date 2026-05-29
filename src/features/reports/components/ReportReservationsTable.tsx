@@ -28,7 +28,7 @@ function formatEstado(state: string): string {
   return stateLabels[key] ?? state;
 }
 
-function tipoReservaLabel(transferId: number | null): string {
+function tipoReservaLabel(transferId: string | null): string {
   if (transferId === null) return "Sin transfer";
   return "Con transfer";
 }

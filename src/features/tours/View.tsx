@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,6 +40,7 @@ import { canManageCatalog } from "@/lib/role-permissions";
 import { EditTourView } from "./Edit";
 
 export const View = () => {
+  const router = useRouter();
   const { user } = useAuth();
   const canCrudCatalog = canManageCatalog(user?.role);
 
@@ -271,9 +273,7 @@ export const View = () => {
                   <TableHead className="text-center font-semibold text-foreground">
                     Precio
                   </TableHead>
-                  {canCrudCatalog && (
-                  <TableHead className="w-[50px] text-center"></TableHead>
-                  )}
+                  <TableHead className="w-[50px] text-center" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -312,7 +312,6 @@ export const View = () => {
                         ),
                       )}
                     </TableCell>
-                    {canCrudCatalog && (
                     <TableCell className="text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -325,19 +324,29 @@ export const View = () => {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => handleEditTour(tour)}>
-                            Editar
-                          </DropdownMenuItem>
                           <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => handleDeleteTour(tour)}
+                            onSelect={() => {
+                              router.push(`/tours/${tour.id_tour}`);
+                            }}
                           >
-                            Eliminar
+                            Ver tour
                           </DropdownMenuItem>
+                          {canCrudCatalog && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEditTour(tour)}>
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleDeleteTour(tour)}
+                              >
+                                Eliminar
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                    )}
                   </TableRow>
                 ))}
               </TableBody>

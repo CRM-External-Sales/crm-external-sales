@@ -23,6 +23,10 @@ import {
 import { enrichReservationForApiResponse } from "@/lib/reservation-cancellation-policy";
 import { syncReservationStatesInDatabase } from "@/lib/sync-reservation-db-states";
 import { serializeReservationForJSON } from "@/lib/serialize-reservation-for-json";
+import {
+  isValidLicensePlateFormat,
+  normalizeLicensePlate,
+} from "@/lib/license-plate";
 
 export const POST = withRole("agent")(async (request: AuthenticatedRequest, user) => {
   try {
@@ -90,7 +94,7 @@ export const POST = withRole("agent")(async (request: AuthenticatedRequest, user
 
       if (body.transfer_id) {
         await assertTransferFreeOnSlot(tx, {
-          transferId: BigInt(body.transfer_id),
+          transferId: body.transfer_id,
           date: reservationDate,
           time: timeDate,
           tourDuration: tour.duration,
@@ -241,9 +245,9 @@ export const GET = withRole("agent")(async (request: AuthenticatedRequest, user)
     if (transfer_id === "__none__") {
       andParts.push({ transfer_id: null });
     } else if (transfer_id?.trim()) {
-      const plate = transfer_id.trim();
-      if (/^\d+$/.test(plate)) {
-        andParts.push({ transfer_id: BigInt(plate) });
+      const plate = normalizeLicensePlate(transfer_id.trim());
+      if (isValidLicensePlateFormat(plate)) {
+        andParts.push({ transfer_id: plate });
       }
     }
 

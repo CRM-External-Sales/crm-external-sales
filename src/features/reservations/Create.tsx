@@ -111,7 +111,7 @@ export const CreateReservationView = () => {
   const [loadingSlot, setLoadingSlot] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
 
-  const [busyTransferPlates, setBusyTransferPlates] = useState<number[]>([]);
+  const [busyTransferPlates, setBusyTransferPlates] = useState<string[]>([]);
   const [loadingTransferSlot, setLoadingTransferSlot] = useState(false);
   const [transferSlotError, setTransferSlotError] = useState<string | null>(null);
 
@@ -282,13 +282,13 @@ export const CreateReservationView = () => {
     if (needsTransfer !== "yes" || transferId == null || transferId === "") {
       return;
     }
-    const n = Number(transferId);
+    const plateKey = String(transferId).toUpperCase();
     const t = transfers.find((x) => String(x.license_plate) === String(transferId));
     if (!t) {
       setValue("transfer_id", undefined);
       return;
     }
-    if (busyTransferSet.has(n) || Number(t.capacity) < peopleForTransfer) {
+    if (busyTransferSet.has(plateKey) || Number(t.capacity) < peopleForTransfer) {
       setValue("transfer_id", undefined);
     }
   }, [
@@ -509,7 +509,7 @@ export const CreateReservationView = () => {
 
     if (data.needs_transfer === "yes" && data.transfer_id != null) {
       const chosen = transfers.find(
-        (x) => Number(x.license_plate) === Number(data.transfer_id),
+        (x) => String(x.license_plate) === String(data.transfer_id),
       );
       if (
         chosen &&

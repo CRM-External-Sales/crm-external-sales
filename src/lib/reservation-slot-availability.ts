@@ -160,7 +160,7 @@ export function transferOccupationWindowsOverlap(
 export async function assertTransferFreeOnSlot(
   tx: Tx,
   input: {
-    transferId: bigint;
+    transferId: string;
     date: Date;
     time: Date;
     /** Duración lógica del tour (`tour.duration`); define fin de servicio antes del colchón de retorno. */

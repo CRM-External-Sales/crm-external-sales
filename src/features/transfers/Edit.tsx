@@ -59,9 +59,13 @@ function transferToFormState(transfer: Transfer): UpdateTransferFormValues {
         ? String(transfer.base_price)
         : "",
     sale_price:
-      transfer.sale_price != null && !Number.isNaN(Number(transfer.sale_price))
-        ? String(transfer.sale_price)
-        : "",
+      transfer.type === "Interno"
+        ? transfer.base_price != null && !Number.isNaN(Number(transfer.base_price))
+          ? String(transfer.base_price)
+          : ""
+        : transfer.sale_price != null && !Number.isNaN(Number(transfer.sale_price))
+          ? String(transfer.sale_price)
+          : "",
   };
 }
 
@@ -81,6 +85,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
     watch,
     reset,
     getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<UpdateTransferFormValues, unknown, UpdateTransferFormOutput>({
     resolver: zodResolver(UpdateTransferFormSchema),
@@ -97,6 +102,12 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
   const supplierCorporate = watch("supplier_corporate");
   const availability = watch("availability");
   const type = watch("type");
+  const basePrice = watch("base_price");
+
+  useEffect(() => {
+    if (type !== "Interno") return;
+    setValue("sale_price", basePrice ?? "", { shouldValidate: true, shouldDirty: true });
+  }, [type, basePrice, setValue]);
 
   // Cargar proveedores con servicio "Transfer"
   useEffect(() => {
@@ -137,8 +148,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
     setDeleting(true);
 
     try {
-      const licensePlateNumber = parseInt(licensePlate, 10);
-      const response = await transferService.deleteTransfer(licensePlateNumber);
+      const response = await transferService.deleteTransfer(licensePlate);
 
       if (response.success) {
         setDeleteDialogOpen(false);
@@ -190,8 +200,7 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
     setSuccess(null);
 
     try {
-      const licensePlateNumber = parseInt(licensePlate, 10);
-      const response = await transferService.updateTransfer(licensePlateNumber, {
+      const response = await transferService.updateTransfer(licensePlate, {
         availability: data.availability,
         make: data.make,
         model: data.model,
@@ -485,6 +494,11 @@ export const EditTransferView = ({ transfer, onCancel, onSuccess }: EditTransfer
                   />
                   {errors.sale_price && (
                     <p className="text-sm text-destructive">{errors.sale_price.message}</p>
+                  )}
+                  {type === "Interno" && (
+                    <p className="text-xs text-muted-foreground">
+                      En operación interna el precio de venta es igual al precio base.
+                    </p>
                   )}
                 </div>
               </div>

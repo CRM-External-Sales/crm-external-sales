@@ -46,7 +46,7 @@ export interface ReportReservationRow {
   total: number;
   discount: number;
   iva: number;
-  transfer_id: number | null;
+  transfer_id: string | null;
   tour?: {
     id_tour: number;
     name: string;

@@ -37,6 +37,7 @@ export const CreateTransferView = () => {
     reset,
     watch,
     getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<
     CreateTransferFormValues,
@@ -57,6 +58,12 @@ export const CreateTransferView = () => {
   const supplierCorporate = watch("supplier_corporate");
   const availability = watch("availability");
   const type = watch("type");
+  const basePrice = watch("base_price");
+
+  useEffect(() => {
+    if (type !== "Interno") return;
+    setValue("sale_price", basePrice ?? "", { shouldValidate: true, shouldDirty: true });
+  }, [type, basePrice, setValue]);
 
   useEffect(() => {
     const loadSuppliers = async () => {
@@ -96,7 +103,7 @@ export const CreateTransferView = () => {
         capacity: data.capacity,
         type: data.type,
         base_price: data.base_price,
-        sale_price: data.sale_price ?? data.base_price,
+        sale_price: data.sale_price,
       });
 
       if (response.success && response.data) {
@@ -107,7 +114,7 @@ export const CreateTransferView = () => {
         clearDraft();
         reset({
           ...createTransferFormEmptyValues(),
-          license_plate: String(created.license_plate),
+          license_plate: created.license_plate,
         });
       } else {
         setServerError(response.error || "No se pudo crear el transfer.");
@@ -170,12 +177,11 @@ export const CreateTransferView = () => {
                   </Label>
                   <Input
                     id="license_plate"
-                    type="number"
-                    min={1}
-                    step={1}
-                    placeholder="Número de placa"
+                    type="text"
+                    maxLength={32}
+                    autoComplete="off"
+                    placeholder="Ej. ABC123"
                     className={cn(
-                      inputNumberClass,
                       errors.license_plate && "border-destructive ring-1 ring-destructive/30",
                     )}
                     {...register("license_plate")}
@@ -382,6 +388,11 @@ export const CreateTransferView = () => {
                   />
                   {errors.sale_price && (
                     <p className="text-sm text-destructive">{errors.sale_price.message}</p>
+                  )}
+                  {type === "Interno" && (
+                    <p className="text-xs text-muted-foreground">
+                      En operación interna el precio de venta es igual al precio base.
+                    </p>
                   )}
                 </div>
               </div>

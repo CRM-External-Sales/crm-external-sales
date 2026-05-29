@@ -1,8 +1,13 @@
 import z from "zod";
+import {
+  normalizeLicensePlate,
+  zLicensePlateOptional,
+  zLicensePlateOptionalNullable,
+} from "@/lib/license-plate";
 
 export const CreateReservationSchema = z.object({
   tour_id: z.number().int().positive("El ID del tour es requerido"),
-  transfer_id: z.number().int().positive().optional(),
+  transfer_id: zLicensePlateOptional(),
   hotel_reservation: z.number().int().positive("El número de habitación/reserva es requerido"),
   date: z.string().datetime("La fecha debe ser válida (ISO 8601)"),
   time: z.string().regex(/^\d{2}:\d{2}$/, "El formato de hora debe ser HH:MM"),
@@ -54,9 +59,8 @@ export const CreateReservationFormBaseSchema = z
     needs_transfer: z.enum(["yes", "no"]),
     transfer_id: z.preprocess((v) => {
       if (v === "" || v === null || v === undefined) return undefined;
-      const n = typeof v === "string" ? Number(v) : Number(v);
-      return Number.isNaN(n) ? undefined : n;
-    }, z.number().int().positive().optional()),
+      return normalizeLicensePlate(String(v));
+    }, z.string().optional()),
     iva_rate: z.coerce.number().min(0, "Mínimo 0").max(1, "Máximo 1"),
     discount: z.coerce.number().min(0, "El descuento no puede ser negativo"),
     transfer_amount: z.preprocess(
@@ -115,7 +119,7 @@ const trimOrNull = (v: unknown) => {
 
 export const UpdateReservationSchema = z.object({
   tour_id: z.number().int().positive().optional(),
-  transfer_id: z.number().int().positive().optional().nullable(), // Allow null to remove transfer
+  transfer_id: zLicensePlateOptionalNullable(),
   hotel_reservation: z.number().int().positive().optional(),
   date: z.string().datetime().optional(),
   time: z.string().regex(/^\d{2}:\d{2}$/).optional(),

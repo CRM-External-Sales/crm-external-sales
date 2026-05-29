@@ -393,7 +393,7 @@ model reservation {
   iva                 Decimal   @db.Decimal
   discount            Decimal   @db.Decimal
   total               Decimal   @db.Decimal
-  transfer_id         BigInt?
+  transfer_id         String?   @db.VarChar(32)
   cancellation_reason String?   @db.VarChar
   tour                tour      @relation(fields: [tour_id], references: [id_tour], map: "Reservation_tour_id_fkey")
   transfer            transfer? @relation(fields: [transfer_id], references: [license_plate], onDelete: Restrict, map: "Reservation_transfer_id_fkey")
@@ -470,7 +470,7 @@ model tour_schedule {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model transfer {
-  license_plate      BigInt        @id(map: "Transfer_pkey")
+  license_plate      String        @id(map: "Transfer_pkey") @db.VarChar(32)
   supplier_corporate BigInt
   availability       String        @db.VarChar
   make               String        @db.VarChar

@@ -154,13 +154,16 @@ export const View = () => {
               </div>
             ) : null}
 
-            <Button
-              type="submit"
-              className="w-full bg-[#647a3a] hover:bg-[#4f622d]"
-              disabled={loading || submitting}
-            >
-              {loading || submitting ? "Iniciando..." : "Iniciar sesión"}
-            </Button>
+            <div className="flex justify-center pt-2">
+              <Button
+                type="submit"
+                size="lg"
+                className="min-w-[160px] bg-[#647a3a] px-8 hover:bg-[#4f622d]"
+                disabled={loading || submitting}
+              >
+                {loading || submitting ? "Iniciando..." : "Iniciar sesión"}
+              </Button>
+            </div>
           </form>
         </div>
       </div>

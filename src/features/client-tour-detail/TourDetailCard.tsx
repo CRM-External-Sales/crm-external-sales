@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   DollarSign,
   Users,
@@ -74,9 +74,12 @@ function formatPrice(value: number, localeHint: string) {
   }).format(value);
 }
 
+const SWIPE_THRESHOLD_PX = 50;
+
 export function TourDetailCard({ tour }: TourDetailCardProps) {
   const { t: tr, i18n } = useTranslation("client");
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
 
   const images = tour.tour_image || [];
   const hasImages = images.length > 0;
@@ -87,6 +90,18 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
 
   const handlePrev = () => {
     setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || images.length <= 1) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (delta > SWIPE_THRESHOLD_PX) handlePrev();
+    else if (delta < -SWIPE_THRESHOLD_PX) handleNext();
+    touchStartX.current = null;
   };
 
   const scheduleMap = new Map<string, string[]>();
@@ -101,10 +116,10 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
   return (
     <>
       <div
-        className="mx-auto flex w-full max-w-6xl flex-col gap-10 rounded-2xl p-8 shadow-sm md:flex-row md:p-12"
+        className="mx-auto flex w-full max-w-6xl flex-col gap-10 rounded-2xl p-8 shadow-sm lg:flex-row lg:p-12"
         style={{ backgroundColor: CLIENT_SURFACE }}
       >
-        <div className="flex w-full flex-col md:w-1/2">
+        <div className="flex w-full flex-col lg:w-1/2">
           <div className="mb-6 flex flex-col items-center text-center">
             <h1 className="mb-3 text-2xl font-bold text-neutral-600 sm:text-3xl">
               {tour.name}
@@ -177,10 +192,10 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
             </p>
           </div>
 
-          <div className="mt-auto flex justify-end">
+          <div className="mt-auto flex w-full justify-center lg:justify-end">
             <Button
               asChild
-              className="rounded-md bg-[#607536] px-8 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#3C4A22]"
+              className="w-full max-w-xs rounded-md bg-[#607536] px-8 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#3C4A22] sm:w-auto lg:max-w-none"
             >
               <Link href={`/catalogo/tour/${tour.id_tour}/reservar`}>
                 {tr("detail.bookTour")}
@@ -189,10 +204,14 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
           </div>
         </div>
 
-        <div className="relative mt-8 flex w-full min-h-[300px] md:mt-0 md:min-h-0 md:w-1/2 flex-col justify-center items-center">
+        <div className="relative mt-8 flex w-full min-h-[300px] flex-col items-center justify-center lg:mt-0 lg:min-h-0 lg:w-1/2">
           {hasImages ? (
             <>
-              <div className="relative h-full w-full max-w-sm aspect-square md:aspect-auto md:h-full rounded-2xl overflow-hidden bg-[#F2F1ED]">
+              <div
+                className="relative aspect-square h-full w-full max-w-lg touch-pan-y rounded-2xl overflow-hidden bg-[#F2F1ED] lg:aspect-auto lg:max-w-sm lg:h-full"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={images[currentImgIndex].path}
@@ -205,7 +224,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
                 <>
                   <button
                     onClick={handlePrev}
-                    className="absolute left-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 shadow-sm transition-colors hover:bg-[#D6D4CB] md:-left-4"
+                    className="absolute left-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 shadow-sm transition-colors hover:bg-[#D6D4CB] lg:-left-4"
                     style={{ backgroundColor: CLIENT_SURFACE }}
                     aria-label={tr("detail.imgPrevAria")}
                   >
@@ -213,7 +232,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
                   </button>
                   <button
                     onClick={handleNext}
-                    className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 shadow-sm transition-colors hover:bg-[#D6D4CB] md:-right-4"
+                    className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 shadow-sm transition-colors hover:bg-[#D6D4CB] lg:-right-4"
                     style={{ backgroundColor: CLIENT_SURFACE }}
                     aria-label={tr("detail.imgNextAria")}
                   >
@@ -238,7 +257,7 @@ export function TourDetailCard({ tour }: TourDetailCardProps) {
             </>
           ) : (
             <div
-              className="flex h-full w-full max-w-sm aspect-square md:aspect-auto items-center justify-center opacity-30 rounded-2xl"
+              className="flex aspect-square h-full w-full max-w-lg items-center justify-center opacity-30 rounded-2xl lg:aspect-auto lg:max-w-sm"
               style={{
                 backgroundImage: `
                   linear-gradient(45deg, #c9c7c2 25%, transparent 25%),

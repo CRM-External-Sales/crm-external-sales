@@ -19,6 +19,8 @@ import { isAxiosLikeError } from "@/lib/http-error";
 
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 
 const selectBaseClass =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
@@ -34,6 +36,8 @@ export const CreateTransferView = () => {
     handleSubmit,
     reset,
     watch,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<
     CreateTransferFormValues,
@@ -44,9 +48,22 @@ export const CreateTransferView = () => {
     defaultValues: createTransferFormEmptyValues(),
   });
 
+  const emptyValues = createTransferFormEmptyValues();
+  const { clearDraft } = useFormDraft({
+    draftKey: formDraftKeys.transfers.create,
+    form: { watch, reset, getValues },
+    defaultValues: emptyValues,
+  });
+
   const supplierCorporate = watch("supplier_corporate");
   const availability = watch("availability");
   const type = watch("type");
+  const basePrice = watch("base_price");
+
+  useEffect(() => {
+    if (type !== "Interno") return;
+    setValue("sale_price", basePrice ?? "", { shouldValidate: true, shouldDirty: true });
+  }, [type, basePrice, setValue]);
 
   useEffect(() => {
     const loadSuppliers = async () => {
@@ -94,9 +111,10 @@ export const CreateTransferView = () => {
         const message = `Transfer con placa ${created.license_plate} creado correctamente.`;
         setSuccess(message);
         toast.success(message);
+        clearDraft();
         reset({
           ...createTransferFormEmptyValues(),
-          license_plate: String(created.license_plate),
+          license_plate: created.license_plate,
         });
       } else {
         setServerError(response.error || "No se pudo crear el transfer.");
@@ -120,6 +138,7 @@ export const CreateTransferView = () => {
   };
 
   const handleReset = () => {
+    clearDraft();
     reset(createTransferFormEmptyValues());
     setServerError(null);
     setSuccess(null);
@@ -158,12 +177,11 @@ export const CreateTransferView = () => {
                   </Label>
                   <Input
                     id="license_plate"
-                    type="number"
-                    min={1}
-                    step={1}
-                    placeholder="Número de placa"
+                    type="text"
+                    maxLength={32}
+                    autoComplete="off"
+                    placeholder="Ej. ABC123"
                     className={cn(
-                      inputNumberClass,
                       errors.license_plate && "border-destructive ring-1 ring-destructive/30",
                     )}
                     {...register("license_plate")}
@@ -345,7 +363,14 @@ export const CreateTransferView = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sale_price" className="text-[#4A4A4A] font-semibold after:ml-1 after:text-red-500 after:content-['*']">
+                  <Label
+                    htmlFor="sale_price"
+                    className={cn(
+                      "text-[#4A4A4A] font-semibold",
+                      watch("type") === "Externo" &&
+                        "after:ml-1 after:text-red-500 after:content-['*']",
+                    )}
+                  >
                     Precio venta
                   </Label>
                   <Input
@@ -354,6 +379,7 @@ export const CreateTransferView = () => {
                     min={0}
                     step={0.01}
                     placeholder="Ingrese el precio venta del transfer"
+                    disabled={watch("type") === "Interno"}
                     className={cn(
                       inputNumberClass,
                       errors.sale_price && "border-destructive ring-1 ring-destructive/30",
@@ -362,6 +388,11 @@ export const CreateTransferView = () => {
                   />
                   {errors.sale_price && (
                     <p className="text-sm text-destructive">{errors.sale_price.message}</p>
+                  )}
+                  {type === "Interno" && (
+                    <p className="text-xs text-muted-foreground">
+                      En operación interna el precio de venta es igual al precio base.
+                    </p>
                   )}
                 </div>
               </div>

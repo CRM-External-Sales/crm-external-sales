@@ -3,6 +3,7 @@ import { ClientMarketingBackNav } from "@/features/client-home/ClientMarketingBa
 import { prisma } from "@/lib/prisma";
 import { serializeTourForJSON } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import { ClientWhatsAppMessageScope } from "@/features/client-home/ClientWhatsAppMessageContext";
 import { TourReservationForm } from "@/features/client-tour-detail/TourReservationForm";
 import type { ClientTourDetail } from "@/features/client-tour-detail/TourDetailCard";
 
@@ -72,7 +73,11 @@ export default async function TourReservationPage({ params }: Props) {
           navKey="navigation.backToTour"
         />
 
-        <TourReservationForm tour={tourDetail} />
+        <ClientWhatsAppMessageScope
+          message={`¡Hola! Tengo una consulta general sobre el tour "${tourDetail.name}".`}
+        >
+          <TourReservationForm tour={tourDetail} />
+        </ClientWhatsAppMessageScope>
       </div>
     </DashboardLayout>
   );

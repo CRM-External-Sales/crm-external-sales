@@ -1,9 +1,10 @@
-/** Rutas que un usuario con rol `customer` puede ver (además de login / recuperación fuera del CRM). */
+import { isCustomerOnlyPath, normalizeAppPath } from "@/lib/route-access";
+
+/** Rutas que un usuario con rol `customer` puede ver en el CRM autenticado. */
 export function isCustomerAllowedPath(pathname: string): boolean {
-  const path = pathname.split("?")[0] || "/";
-  if (path === "/home" || path === "/catalogo") return true;
-  if (path.startsWith("/catalogo/tour/")) return true;
-  return false;
+  const path = normalizeAppPath(pathname);
+  if (path === "/home") return true;
+  return isCustomerOnlyPath(path);
 }
 
 /**

@@ -350,11 +350,11 @@ export async function PUT(
           const currentTourId = body.tour_id || Number(existingReservation.tour_id);
           const currentPeople = body.people || existingReservation.people;
           
-          let currentTransferId = null;
+          let currentTransferId: string | null = null;
           if (body.transfer_id !== undefined) {
-              currentTransferId = body.transfer_id; // Puede ser null
+              currentTransferId = body.transfer_id;
           } else {
-              currentTransferId = existingReservation.transfer_id ? Number(existingReservation.transfer_id) : null;
+              currentTransferId = existingReservation.transfer_id ?? null;
           }
 
           // Obtener datos frescos si los IDs cambiaron, o usar los existentes si no (pero es más fácil obtener nuevos para mayor seguridad/simplicidad)
@@ -365,7 +365,7 @@ export async function PUT(
 
           let transfer = null;
           if (currentTransferId) {
-               transfer = await prisma.transfer.findUnique({ where: { license_plate: BigInt(currentTransferId) } });
+               transfer = await prisma.transfer.findUnique({ where: { license_plate: currentTransferId } });
                if (!transfer) throw new Error("Transfer no encontrado para recalculo");
           }
 
@@ -421,12 +421,10 @@ export async function PUT(
           ? BigInt(body.tour_id)
           : existingReservation.tour_id;
 
-      const mergedTransferId: bigint | null =
+      const mergedTransferId: string | null =
         body.transfer_id === undefined
           ? existingReservation.transfer_id
-          : body.transfer_id == null
-            ? null
-            : BigInt(body.transfer_id);
+          : body.transfer_id ?? null;
 
       const updatedReservation = await prisma.$transaction(async (tx) => {
         if (mergedStateForAdmin !== "cancelled") {

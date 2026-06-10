@@ -18,6 +18,8 @@ import {
   type Supplier,
 } from "@/lib/api";
 import { INTERNAL_SUPPLIER_CORPORATE } from "@/lib/internal-supplier";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 
 // ========================
 // Zod Schema
@@ -43,6 +45,19 @@ const tourFormSchema = z.object({
 
 type TourFormValues = z.infer<typeof tourFormSchema>;
 
+const tourCreateDefaultValues: TourFormValues = {
+  name: "",
+  description: "",
+  type: "",
+  availability: "",
+  base_price: "" as unknown as number,
+  spots: "" as unknown as number,
+  requirements: "",
+  duration: "",
+  difficulty: "",
+  supplier_corporate: INTERNAL_SUPPLIER_CORPORATE as unknown as number,
+};
+
 interface Schedule {
   weekday: string;
   start_time: string;
@@ -61,21 +76,11 @@ export const CreateTourView: React.FC = () => {
     handleSubmit,
     reset,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(tourFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      type: "",
-      availability: "",
-      base_price: "" as unknown as number,
-      spots: "" as unknown as number,
-      requirements: "",
-      duration: "",
-      difficulty: "",
-      supplier_corporate: INTERNAL_SUPPLIER_CORPORATE as unknown as number,
-    },
+    defaultValues: tourCreateDefaultValues,
   });
 
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -90,6 +95,21 @@ export const CreateTourView: React.FC = () => {
 
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const { clearDraft } = useFormDraft({
+    draftKey: formDraftKeys.tours.create,
+    form: { watch, reset, getValues },
+    defaultValues: tourCreateDefaultValues,
+    extra: {
+      get: () => ({ schedules }),
+      apply: (data) => {
+        const payload = data as { schedules?: Schedule[] };
+        if (Array.isArray(payload?.schedules)) {
+          setSchedules(payload.schedules);
+        }
+      },
+    },
+  });
 
   // Cargar proveedores con servicio "Tour"
   useEffect(() => {
@@ -185,7 +205,8 @@ export const CreateTourView: React.FC = () => {
   };
 
   const handleReset = () => {
-    reset();
+    clearDraft();
+    reset(tourCreateDefaultValues);
     setSchedules([]);
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);

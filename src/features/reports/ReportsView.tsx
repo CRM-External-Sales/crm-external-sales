@@ -22,6 +22,8 @@ import { ReportFilters } from "./components/ReportFilters";
 import { ReportKpis } from "./components/ReportKpis";
 import { ReportReservationsTable } from "./components/ReportReservationsTable";
 import type { ReportFilterForm } from "./filter-types";
+import { useStateDraft } from "@/hooks/useStateDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 import { needsGranularidad } from "./filter-types";
 import { buildReportQuery } from "./query-builder";
 import type { ReportsData } from "./types";
@@ -53,7 +55,11 @@ function parseApiError(err: unknown): string {
 }
 
 export function ReportsView() {
-  const [filters, setFilters] = useState<ReportFilterForm>(defaultFilters);
+  const [filters, setFilters] = useStateDraft<ReportFilterForm>(
+      formDraftKeys.reports.filters,
+      defaultFilters,
+      { restoreMessage: false },
+    );
   const [limit, setLimit] = useState(10);
   const [reportData, setReportData] = useState<ReportsData | null>(null);
   const [activeQuery, setActiveQuery] = useState<ReportQueryParams | null>(null);

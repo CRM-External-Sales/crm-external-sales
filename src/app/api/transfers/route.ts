@@ -134,6 +134,10 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
     await ensureInternalSupplierExists(prisma);
     const supplierCorporate =
       validatedData.supplier_corporate ?? INTERNAL_SUPPLIER_CORPORATE;
+    const salePrice =
+      validatedData.type === "Interno"
+        ? validatedData.base_price
+        : (validatedData.sale_price ?? validatedData.base_price);
 
     // Verificar que el supplier existe
     const supplier = await prisma.supplier.findUnique({
@@ -183,7 +187,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
         capacity: validatedData.capacity,
         type: validatedData.type,
         base_price: validatedData.base_price,
-        sale_price: validatedData.sale_price,
+        sale_price: salePrice,
         supplier_corporate: supplierCorporate,
       },
       include: {

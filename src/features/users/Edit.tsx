@@ -13,6 +13,8 @@ import { userService, type User, type ApiResponse } from "@/lib/api";
 import { CheckCircle2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { UpdateUserSchema, type UpdateUserInput } from "@/app/schemas/user.schema";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys, SENSITIVE_DRAFT_FIELDS } from "@/lib/form-draft-keys";
 
 interface EditUserProps {
   user: User;
@@ -30,9 +32,20 @@ export const EditUserView: React.FC<EditUserProps> = ({
   const { user: currentUser } = useAuth();
   const isOwnUser = currentUser?.username === user.username;
 
+  const userEditDefaults = {
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    phone: user.phone || "",
+    newPassword: "",
+  };
+
   const {
     register,
     handleSubmit,
+    watch,
+    reset,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<UpdateUserInput & { newPassword?: string }>({
     resolver: zodResolver(
@@ -47,13 +60,14 @@ export const EditUserView: React.FC<EditUserProps> = ({
           .or(z.literal('')),
       })
     ),
-    defaultValues: {
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      phone: user.phone || "",
-      newPassword: "",
-    },
+    defaultValues: userEditDefaults,
+  });
+
+  const { clearDraft } = useFormDraft({
+    draftKey: formDraftKeys.users.edit(user.username),
+    form: { watch, reset, getValues },
+    defaultValues: userEditDefaults,
+    excludeFields: [...SENSITIVE_DRAFT_FIELDS],
   });
 
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -84,6 +98,7 @@ export const EditUserView: React.FC<EditUserProps> = ({
         toast.success(`Usuario '${user.username}' actualizado correctamente.`);
         // También si se ingresó un nuevo password y la API de admin lo requiere en otro endpoint
         // habría que llamarlo. Por el alcance del proyecto actual, se actualizan los datos básicos.
+        clearDraft();
         onSuccess();
       } else {
         setGlobalError(response.error || "No se pudo actualizar el usuario.");

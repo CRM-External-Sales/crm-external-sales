@@ -1,0 +1,3 @@
+email,password,role
+agente.prueba@ejemplo.com,cambiar,agent
+admin_demo@ejemplo.com,cambiar,admin

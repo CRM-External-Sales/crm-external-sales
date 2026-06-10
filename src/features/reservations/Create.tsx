@@ -39,6 +39,8 @@ import {
   ymdToReservationDateIso,
 } from "@/lib/tour-schedule-picker";
 import { cn } from "@/lib/utils";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
 
 const selectBaseClass =
   "flex h-9 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
@@ -70,11 +72,19 @@ export const CreateReservationView = () => {
     handleSubmit,
     reset,
     watch,
+    getValues,
     setValue,
     setError,
     control,
     formState: { errors, isSubmitting },
   } = form;
+
+  const reservationDefaults = createReservationFormDefaultValues();
+  const { clearDraft } = useFormDraft({
+    draftKey: formDraftKeys.reservations.create,
+    form: { watch, reset, getValues },
+    defaultValues: reservationDefaults,
+  });
 
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
@@ -101,7 +111,7 @@ export const CreateReservationView = () => {
   const [loadingSlot, setLoadingSlot] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
 
-  const [busyTransferPlates, setBusyTransferPlates] = useState<number[]>([]);
+  const [busyTransferPlates, setBusyTransferPlates] = useState<string[]>([]);
   const [loadingTransferSlot, setLoadingTransferSlot] = useState(false);
   const [transferSlotError, setTransferSlotError] = useState<string | null>(null);
 
@@ -272,13 +282,13 @@ export const CreateReservationView = () => {
     if (needsTransfer !== "yes" || transferId == null || transferId === "") {
       return;
     }
-    const n = Number(transferId);
+    const plateKey = String(transferId).toUpperCase();
     const t = transfers.find((x) => String(x.license_plate) === String(transferId));
     if (!t) {
       setValue("transfer_id", undefined);
       return;
     }
-    if (busyTransferSet.has(n) || Number(t.capacity) < peopleForTransfer) {
+    if (busyTransferSet.has(plateKey) || Number(t.capacity) < peopleForTransfer) {
       setValue("transfer_id", undefined);
     }
   }, [
@@ -499,7 +509,7 @@ export const CreateReservationView = () => {
 
     if (data.needs_transfer === "yes" && data.transfer_id != null) {
       const chosen = transfers.find(
-        (x) => Number(x.license_plate) === Number(data.transfer_id),
+        (x) => String(x.license_plate) === String(data.transfer_id),
       );
       if (
         chosen &&
@@ -546,6 +556,7 @@ export const CreateReservationView = () => {
         const message = "Reserva creada correctamente.";
         setSuccess(message);
         toast.success(message);
+        clearDraft();
         reset(createReservationFormDefaultValues());
         void tourService
           .getTours({ page: 1, limit: 200, availability: "Disponible" })
@@ -577,6 +588,7 @@ export const CreateReservationView = () => {
   };
 
   const handleReset = () => {
+    clearDraft();
     reset(createReservationFormDefaultValues());
     setServerError(null);
     setSuccess(null);

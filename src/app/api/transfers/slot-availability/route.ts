@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
 
       const seen = new Set<string>();
 
-      const busy_license_plates: number[] = [];
+      const busy_license_plates: string[] = [];
 
       for (const r of existing) {
 
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
 
         seen.add(k);
 
-        busy_license_plates.push(Number(r.transfer_id));
+        busy_license_plates.push(r.transfer_id);
 
       }
 

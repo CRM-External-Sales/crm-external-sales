@@ -236,6 +236,7 @@ export interface Tour {
     email: string;
   };
   tour_image?: TourImage[];
+  tour_schedule?: TourSchedule[];
 }
 
 export interface TourImage {
@@ -247,6 +248,8 @@ export interface TourImage {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  /** Presente en GET /tours/:id/images (URL firmada). */
+  publicUrl?: string | null;
 }
 
 export interface TourSchedule {
@@ -268,7 +271,7 @@ export interface Supplier {
 
 // Interfaces para Transfers
 export interface Transfer {
-  license_plate: number;
+  license_plate: string;
   supplier_corporate: number;
   availability: string;
   make: string;
@@ -556,7 +559,7 @@ export interface Reservation {
   iva: number;
   discount: number;
   total: number;
-  transfer_id?: number | null;
+  transfer_id?: string | null;
   tour?: {
     name: string;
     type: string;
@@ -564,7 +567,7 @@ export interface Reservation {
     /** Ayuda a depurar política 24/48 h; coincide con el tour en BD. */
     supplier_corporate?: number;
   };
-  transfer?: { license_plate: number; make: string; model: string } | null;
+  transfer?: { license_plate: string; make: string; model: string } | null;
   app_user?: { username: string };
   /** Reservado para compatibilidad; siempre `null` (la anulación fuera de plazo usa reconocimiento explícito). */
   cancel_forbidden_reason?: null;
@@ -581,7 +584,7 @@ export interface Reservation {
 export const reservationService = {
   createReservation: async (payload: {
     tour_id: number;
-    transfer_id?: number;
+    transfer_id?: string;
     /** Monto de transfer en la reserva; si no se envía con transfer, el servidor usa el precio de venta del vehículo. */
     transfer_amount?: number;
     hotel_reservation: number;
@@ -654,15 +657,17 @@ export const transferService = {
 
   // Obtener transfer por placa (admin/agent)
   getTransferByLicensePlate: async (
-    licensePlate: number,
+    licensePlate: string,
   ): Promise<ApiResponse<Transfer>> => {
-    const response = await http.get(`/transfers/${licensePlate}`);
+    const response = await http.get(
+      `/transfers/${encodeURIComponent(licensePlate)}`,
+    );
     return response.data as ApiResponse<Transfer>;
   },
 
   // Crear transfer (solo admin)
   createTransfer: async (transferData: {
-    license_plate: number;
+    license_plate: string;
     /** Si se omite, el servidor asume operación interna. */
     supplier_corporate?: number;
     availability: string;
@@ -680,7 +685,7 @@ export const transferService = {
 
   // Actualizar transfer (solo admin)
   updateTransfer: async (
-    licensePlate: number,
+    licensePlate: string,
     transferData: Partial<{
       availability: string;
       make: string;
@@ -693,13 +698,18 @@ export const transferService = {
       supplier_corporate: number;
     }>,
   ): Promise<ApiResponse<Transfer>> => {
-    const response = await http.put(`/transfers/${licensePlate}`, transferData);
+    const response = await http.put(
+      `/transfers/${encodeURIComponent(licensePlate)}`,
+      transferData,
+    );
     return response.data as ApiResponse<Transfer>;
   },
 
   // Eliminar transfer (solo admin)
-  deleteTransfer: async (licensePlate: number): Promise<ApiResponse> => {
-    const response = await http.delete(`/transfers/${licensePlate}`);
+  deleteTransfer: async (licensePlate: string): Promise<ApiResponse> => {
+    const response = await http.delete(
+      `/transfers/${encodeURIComponent(licensePlate)}`,
+    );
     return response.data as ApiResponse;
   },
 
@@ -712,12 +722,12 @@ export const transferService = {
     time: string;
     /** Tour de la reserva: define duración y ventana de ocupación (servicio + colchón de retorno). */
     tour_id: number;
-  }): Promise<ApiResponse<{ busy_license_plates: number[] }>> => {
+  }): Promise<ApiResponse<{ busy_license_plates: string[] }>> => {
     const response = await http.get(
       "/transfers/slot-availability",
       { params },
     );
-    return response.data as ApiResponse<{ busy_license_plates: number[] }>;
+    return response.data as ApiResponse<{ busy_license_plates: string[] }>;
   },
 };
 

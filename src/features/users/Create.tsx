@@ -12,10 +12,20 @@ import { toast } from "sonner";
 import { userService, type ApiResponse } from "@/lib/api";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { CreateUserSchema, type CreateUserInput } from "@/app/schemas/user.schema";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys, SENSITIVE_DRAFT_FIELDS } from "@/lib/form-draft-keys";
 
 interface CreateUserProps {
   onSuccess?: () => void;
 }
+
+const userCreateEmptyValues: CreateUserInput = {
+  username: "",
+  email: "",
+  role: "" as CreateUserInput["role"],
+  phone: "",
+  password: "",
+};
 
 export const CreateUserView: React.FC<CreateUserProps> = ({ onSuccess }) => {
 
@@ -24,24 +34,27 @@ export const CreateUserView: React.FC<CreateUserProps> = ({ onSuccess }) => {
     handleSubmit,
     reset,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserInput>({
     resolver: zodResolver(CreateUserSchema),
     mode: "onTouched",
-    defaultValues: {
-      username: "",
-      email: "",
-      role: "" as any,
-      phone: "",
-      password: "",
-    },
+    defaultValues: userCreateEmptyValues,
+  });
+
+  const { clearDraft } = useFormDraft({
+    draftKey: formDraftKeys.users.create,
+    form: { watch, reset, getValues },
+    defaultValues: userCreateEmptyValues,
+    excludeFields: [...SENSITIVE_DRAFT_FIELDS],
   });
 
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleReset = () => {
-    reset();
+    clearDraft();
+    reset(userCreateEmptyValues);
     setGlobalError(null);
   };
 

@@ -1,11 +1,34 @@
 import z from "zod";
+import {
+  isValidLicensePlateFormat,
+  zLicensePlateApi,
+  zLicensePlateForm,
+} from "@/lib/license-plate";
+
+/** Operación interna: precio de venta siempre coincide con el precio base. */
+export function resolveTransferSalePrice(data: {
+  type: string;
+  base_price: number;
+  sale_price?: number;
+}): number {
+  if (data.type === "Interno") {
+    return data.base_price;
+  }
+  return data.sale_price ?? data.base_price;
+}
+
+const applyTransferSalePriceTransform = <
+  T extends { type: string; base_price: number; sale_price?: number },
+>(
+  data: T,
+): T & { sale_price: number } => ({
+  ...data,
+  sale_price: resolveTransferSalePrice(data),
+});
 
 // Esquema para crear un transfer
 export const CreateTransferSchema = z.object({
-  license_plate: z
-    .number()
-    .int()
-    .positive("La placa debe ser un número positivo"),
+  license_plate: zLicensePlateApi(),
   availability: z.string().min(1, "La disponibilidad es requerida"),
   make: z.string().min(1, "La marca es requerida"),
   model: z.string().min(1, "El modelo es requerido"),
@@ -17,10 +40,21 @@ export const CreateTransferSchema = z.object({
     .positive("El precio base debe ser un número positivo"),
   sale_price: z
     .number()
-    .positive("El precio de venta debe ser un número positivo"),
+    .positive("El precio de venta debe ser un número positivo")
+    .optional(),
   /** Si se omite, en API se asume proveedor de operación interna. */
   supplier_corporate: z.number().int().positive().optional(),
-});
+})
+  .superRefine((data, ctx) => {
+    if (data.type === "Externo" && data.sale_price == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El precio de venta es requerido",
+        path: ["sale_price"],
+      });
+    }
+  })
+  .transform(applyTransferSalePriceTransform);
 
 // Esquema para actualizar un transfer
 export const UpdateTransferSchema = z.object({
@@ -82,13 +116,32 @@ const zPositivePriceString = (requiredMsg: string) =>
       message: "Debe ser un número positivo",
     });
 
-/**
- * Misma forma que los inputs del cliente; al validar produce el shape de CreateTransferSchema.
- */
-export const CreateTransferFormSchema = z.object({
-  license_plate: zPositiveIntString(
+const zOptionalPositivePriceString = () =>
+  z
+    .string()
+    .trim()
+    .transform((s) => (s === "" ? undefined : parseFloat(s)))
+    .refine((n) => n === undefined || (!Number.isNaN(n) && n > 0), {
+      message: "Debe ser un número positivo",
+    });
+
+const transferSalePriceRefine = (
+  data: { type: string; sale_price?: number },
+  ctx: z.RefinementCtx,
+) => {
+  if (data.type === "Externo" && data.sale_price == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El precio de venta es requerido",
+      path: ["sale_price"],
+    });
+  }
+};
+
+const transferFormFields = {
+  license_plate: zLicensePlateForm(
     "La placa es requerida",
-    "La placa debe ser un número entero positivo",
+    "La placa solo puede contener letras y números",
   ),
   make: z.string().trim().min(1, "La marca es requerida"),
   model: z.string().trim().min(1, "El modelo es requerido"),
@@ -110,8 +163,22 @@ export const CreateTransferFormSchema = z.object({
   availability: z.string().trim().min(1, "La disponibilidad es requerida"),
   type: z.string().trim().min(1, "El tipo es requerido"),
   base_price: zPositivePriceString("El precio base es requerido"),
-  sale_price: zPositivePriceString("El precio de venta es requerido"),
-});
+  sale_price: zOptionalPositivePriceString(),
+};
+
+/**
+ * Misma forma que los inputs del cliente; al validar produce el shape de CreateTransferSchema.
+ */
+export const CreateTransferFormSchema = z
+  .object(transferFormFields)
+  .superRefine(transferSalePriceRefine)
+  .transform(applyTransferSalePriceTransform);
+
+export const UpdateTransferFormSchema = z
+  .object(transferFormFields)
+  .omit({ license_plate: true })
+  .superRefine(transferSalePriceRefine)
+  .transform(applyTransferSalePriceTransform);
 
 export type CreateTransferFormValues = z.input<typeof CreateTransferFormSchema>;
 export type CreateTransferFormOutput = z.output<typeof CreateTransferFormSchema>;
@@ -127,10 +194,6 @@ export const createTransferFormEmptyValues = (): CreateTransferFormValues => ({
   type: "",
   base_price: "",
   sale_price: "",
-});
-
-export const UpdateTransferFormSchema = CreateTransferFormSchema.omit({
-  license_plate: true,
 });
 
 export type UpdateTransferFormValues = z.input<typeof UpdateTransferFormSchema>;
@@ -150,10 +213,8 @@ const zSearchTermSchema = z
   .max(100, "La búsqueda no puede exceder 100 caracteres")
   .refine((value) => {
     if (!value) return true;
-    if (!/^\d+$/.test(value)) return true;
-    const parsed = Number(value);
-    return Number.isSafeInteger(parsed) && parsed > 0;
-  }, "La placa debe ser un número entero positivo y válido");
+    return isValidLicensePlateFormat(value);
+  }, "La placa solo puede contener letras y números");
 
 export const TransferViewFiltersSchema = z.object({
   searchTerm: zSearchTermSchema,

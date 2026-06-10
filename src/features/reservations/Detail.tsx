@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -23,6 +23,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
+import { loadFormDraft } from "@/lib/form-draft-storage";
 import { useReservation } from "@/hooks/useReservation";
 import { reservationService, type ApiResponse } from "@/lib/api";
 import { formatUsdAmount } from "@/lib/format-currency";
@@ -91,8 +94,26 @@ export const ReservationDetailView = () => {
     register,
     handleSubmit,
     reset,
+    watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = form;
+
+  const noteDraftKey = reservation
+    ? formDraftKeys.reservations.note(reservation.reservation_id)
+    : "reservations/note:pending";
+  const noteBaseline = reservation
+    ? reservationNoteFormDefaultValues(reservation)
+    : reservationNoteFormDefaultValues();
+  const noteSyncedRef = useRef(false);
+
+  const { clearDraft: clearNoteDraft } = useFormDraft({
+    draftKey: noteDraftKey,
+    form: { watch, reset, getValues },
+    defaultValues: noteBaseline,
+    enabled: !!reservation,
+    isReady: !!reservation,
+  });
 
   const ownsReservation =
     !!user &&
@@ -115,10 +136,15 @@ export const ReservationDetailView = () => {
     reservation.state !== "completed";
 
   useEffect(() => {
-    if (reservation) {
-      reset(reservationNoteFormDefaultValues(reservation));
-    }
-  }, [reservation?.reservation_id, reservation?.note, reset]);
+    noteSyncedRef.current = false;
+  }, [reservation?.reservation_id]);
+
+  useEffect(() => {
+    if (!reservation || noteSyncedRef.current) return;
+    noteSyncedRef.current = true;
+    if (loadFormDraft(noteDraftKey)) return;
+    reset(reservationNoteFormDefaultValues(reservation));
+  }, [reservation, noteDraftKey, reset]);
 
   const onSubmit = handleSubmit(async (data) => {
     if (!reservation || !canEditNote) return;
@@ -132,6 +158,7 @@ export const ReservationDetailView = () => {
       );
       if (res.success && res.data) {
         setReservation(res.data);
+        clearNoteDraft();
         reset(reservationNoteFormDefaultValues(res.data));
         toast.success("Reserva actualizada");
         router.replace(`/reservas/${res.data.reservation_id}`);

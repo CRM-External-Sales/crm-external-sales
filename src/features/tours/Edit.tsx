@@ -21,6 +21,9 @@ import {
   type TourSchedule,
 } from "@/lib/api";
 import { INTERNAL_SUPPLIER_CORPORATE } from "@/lib/internal-supplier";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKeys } from "@/lib/form-draft-keys";
+import { loadFormDraft } from "@/lib/form-draft-storage";
 
 // ========================
 // Zod Schema
@@ -89,6 +92,7 @@ export const EditTourView: React.FC<EditTourProps> = ({
     handleSubmit,
     watch,
     reset,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(editTourFormSchema),
@@ -97,7 +101,18 @@ export const EditTourView: React.FC<EditTourProps> = ({
 
   /** Fila fresca de GET /tours/:id (misma fuente de verdad que al guardar). */
   const [detailTour, setDetailTour] = useState<Tour | null>(null);
+  const [formHydrated, setFormHydrated] = useState(false);
+  const tourSyncedRef = useRef(false);
   const activeTour = detailTour ?? tour;
+  const tourFormDefaults = tourToFormDefaults(activeTour);
+  const tourDraftKey = formDraftKeys.tours.edit(tour.id_tour);
+
+  const { clearDraft } = useFormDraft({
+    draftKey: tourDraftKey,
+    form: { watch, reset, getValues },
+    defaultValues: tourFormDefaults,
+    isReady: formHydrated,
+  });
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(true);
@@ -128,14 +143,27 @@ export const EditTourView: React.FC<EditTourProps> = ({
   useEffect(() => {
     let cancelled = false;
     void tourService.getTourById(tour.id_tour).then((res) => {
-      if (cancelled || !res.success || !res.data) return;
-      setDetailTour(res.data);
-      reset(tourToFormDefaults(res.data));
+      if (cancelled) return;
+      if (res.success && res.data) {
+        setDetailTour(res.data);
+      }
+      setFormHydrated(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [tour.id_tour, reset]);
+  }, [tour.id_tour]);
+
+  useEffect(() => {
+    tourSyncedRef.current = false;
+  }, [tour.id_tour]);
+
+  useEffect(() => {
+    if (!formHydrated || tourSyncedRef.current) return;
+    tourSyncedRef.current = true;
+    if (loadFormDraft(tourDraftKey)) return;
+    reset(tourToFormDefaults(detailTour ?? tour));
+  }, [formHydrated, detailTour, tour, tourDraftKey, reset]);
 
   /**
    * El listado carga proveedores con `service: "Tour"`. Si el tour ya tenía otra
@@ -388,6 +416,7 @@ export const EditTourView: React.FC<EditTourProps> = ({
 
       setSuccess(`Tour '${data.name}' actualizado correctamente.`);
       toast.success(`Tour '${data.name}' actualizado correctamente.`);
+      clearDraft();
       setTimeout(() => onSuccess(), 1500);
     } catch (err: unknown) {
       const e = err as any;

@@ -1,0 +1,17 @@
+# Copiar a crm-load-test.properties y completar (no commitear contraseñas reales)
+BASE_URL=https://tu-app.vercel.app
+API_PREFIX=/api
+
+JMETER_AGENT_EMAIL=agente.prueba@ejemplo.com
+JMETER_ADMIN_EMAIL=admin_demo@ejemplo.com
+JMETER_PASSWORD=cambiar_por_password_de_prueba
+
+TOUR_ID=1
+TOUR_DATE=2026-12-15T00:00:00.000Z
+TOUR_TIME=09:00
+HOTEL_RESERVATION=1001
+
+# Hilos y duración (usar con -J en CLI o User Defined Variables)
+# THREADS=5
+# RAMP_UP_SEC=30
+# LOOPS=20

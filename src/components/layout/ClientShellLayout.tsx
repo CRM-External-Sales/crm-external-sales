@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { ClientWhatsAppFab } from "@/components/client/ClientWhatsAppFab";
 import { Eye, EyeOff, CircleUserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,7 +125,11 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
     <div className="relative flex min-h-screen flex-col bg-[#D6D4CB]">
       {!isHome && (
         <header className="z-50 flex h-[4.5rem] w-full shrink-0 items-center justify-between gap-3 bg-[#313833] px-6 text-white shadow-sm">
-          <div className="flex min-w-0 shrink items-center">
+          <Link
+            href="/catalogo"
+            className="flex min-w-0 shrink items-center rounded-md transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#313833]"
+            aria-label="Ir al catálogo de tours"
+          >
             <Image
               src="/logo-isotipo.png"
               alt={t("shell.logoAria")}
@@ -132,7 +138,7 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
               priority
               className="object-contain"
             />
-          </div>
+          </Link>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ClientLangSwitcher variant="onDarkShell" />
@@ -149,6 +155,8 @@ export function ClientShellLayout({ children }: ClientShellLayoutProps) {
       )}
 
       <main className="min-h-0 w-full flex-1 overflow-y-auto">{children}</main>
+
+      {!isHome ? <ClientWhatsAppFab /> : null}
 
       <Dialog open={logoutOpen} onOpenChange={closeLogoutDialog}>
         <DialogContent

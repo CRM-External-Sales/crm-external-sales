@@ -8,6 +8,7 @@ import { ZodError } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ensureInternalSupplierExists } from "@/lib/internal-supplier";
 import { userMessageFromPrismaKnownError } from "@/lib/prisma-user-facing-error";
+import { revalidateClientCatalog } from "@/lib/revalidate-client-catalog";
 
 // GET /api/tours/:id - Obtener un tour por ID con sus imágenes
 export async function GET(
@@ -215,6 +216,8 @@ export async function PUT(
         timestamp: new Date().toISOString(),
       });
 
+      revalidateClientCatalog(updatedTour.id_tour);
+
       return NextResponse.json({
         success: true,
         message: "Tour actualizado exitosamente",
@@ -341,6 +344,8 @@ export async function DELETE(
         imagesDeleted: imagePaths.length,
         timestamp: new Date().toISOString(),
       });
+
+      revalidateClientCatalog(existingTour.id_tour);
 
       return NextResponse.json({
         success: true,

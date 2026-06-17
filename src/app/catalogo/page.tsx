@@ -6,6 +6,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveTourImageUrl } from "@/lib/tour-image-url";
 import { serializeTourForJSON } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 const SIGNED_IMAGE_TTL_SEC = 60 * 60 * 24 * 7;
 
 async function enrichCatalogTourImages(tours: CatalogTour[]): Promise<void> {

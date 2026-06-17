@@ -19,6 +19,7 @@ import {
   ensureInternalSupplierExists,
   INTERNAL_SUPPLIER_CORPORATE,
 } from "@/lib/internal-supplier";
+import { revalidateClientCatalog } from "@/lib/revalidate-client-catalog";
 
 // Interface para where clause de tour
 interface TourWhereInput {
@@ -440,6 +441,8 @@ export const POST = withAuth(async (request: AuthenticatedRequest, user) => {
         },
       },
     });
+
+    revalidateClientCatalog(tourId);
 
     return NextResponse.json(
       {
